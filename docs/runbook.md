@@ -77,8 +77,8 @@ git remote set-url origin https://faugub:NEW_TOKEN@github.com/faugub/pctmt.git
 File: `~/pctmt/.env.local` (never committed to GitHub)
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://rwngpdgycmzqyiqlqvdn.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=sb_publishable_xLVd1Hn6cWhfG0Eux0Qaqw_3PB_ebFy
+NEXT_PUBLIC_SUPABASE_URL=[https://rwngpdgycmzqyiqlqvdn.supabase.co](https://<project-id>.supabase.co)
+NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-publishable-key>
 ```
 
 If `.env.local` is lost, recreate it with the values above.
