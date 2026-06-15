@@ -44,12 +44,6 @@ code .
 
 Requires the **Remote - WSL** extension installed in VS Code.
 
-### Stop the server
-
-```bash
-Ctrl+C
-```
-
 ---
 
 ## Repository
@@ -58,7 +52,7 @@ Ctrl+C
 |---|---|
 | GitHub | https://github.com/faugub/pctmt |
 | Main branch | `main` |
-| Direct push to main | Yes (phase 1–2) |
+| Direct push to main | Yes |
 
 ### Commit and push
 
@@ -98,19 +92,19 @@ Also update the token in **claude.ai → Settings → Integrations → GitHub** 
 File: `~/pctmt/.env.local` — never committed to GitHub.
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://<project-id>.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://rwngpdgycmzqyiqlqvdn.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-publishable-key>
 ```
 
-If `.env.local` is lost, recreate it with values from the Supabase dashboard under Settings → API Keys.
+If `.env.local` is lost, recreate it from the Supabase dashboard under **Settings → API Keys**.
 
 ### Vercel environment variables
 
-Same two variables are set in Vercel → Project Settings → Environment Variables (Production + Preview + Development).
+Same two variables set in **Vercel → Project Settings → Environment Variables** (Production + Preview + Development).
 
 ### Auth settings
 
-- **Email confirmation:** disabled (dev mode — re-enable before production)
+- **Email confirmation:** disabled (re-enable before public launch)
 - **Auth provider:** Email + Password only
 - **Site URL:** https://pctmt-azure.vercel.app
 - **Redirect URLs:** https://pctmt-azure.vercel.app/**
@@ -132,27 +126,28 @@ Migration status: ✅ applied 2026-06-15
 ```
 pctmt/
 ├── docs/
-│   ├── runbook.md          # This file — operational reference
-│   ├── architecture.md     # Database schema, tech stack, design decisions
-│   └── product.md          # Product vision, roadmap, pricing
+│   ├── runbook.md           # This file — operational reference
+│   ├── architecture.md      # Stack, schema, patterns, decisions
+│   └── product.md           # Vision, roadmap, pricing
 ├── public/
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/
-│   │   │   ├── login/          # Login page ✅
-│   │   │   └── register/       # Register page ✅
+│   │   │   ├── login/           # ✅
+│   │   │   └── register/        # ✅
 │   │   ├── (dashboard)/
-│   │   │   ├── dashboard/      # Dashboard shell ✅
-│   │   │   ├── players/        # Players + snapshots ✅
-│   │   │   ├── sessions/       # Sessions + attendance ✅
-│   │   │   ├── tournaments/    # Tournaments + results ✅
-│   │   │   └── strategies/     # Strategies module (Phase 3)
+│   │   │   ├── dashboard/       # Stats, chart, recent activity ✅
+│   │   │   ├── players/         # CRUD + snapshots + attendance history ✅
+│   │   │   ├── sessions/        # CRUD + attendance toggle ✅
+│   │   │   ├── tournaments/     # CRUD + results per player ✅
+│   │   │   └── strategies/      # CRUD + zone filter + tags ✅
 │   │   ├── actions/
-│   │   │   ├── auth.ts         # login, register, logout ✅
-│   │   │   ├── players.ts      # create, update, delete ✅
-│   │   │   ├── snapshots.ts    # create, delete ✅
-│   │   │   ├── sessions.ts     # create, attendance, delete ✅
-│   │   │   └── tournaments.ts  # create, results, delete ✅
+│   │   │   ├── auth.ts          # login, register, logout ✅
+│   │   │   ├── players.ts       # create, update, delete ✅
+│   │   │   ├── snapshots.ts     # create, delete ✅
+│   │   │   ├── sessions.ts      # create, update, attendance, delete ✅
+│   │   │   ├── tournaments.ts   # create, update, results, delete ✅
+│   │   │   └── strategies.ts    # create, update, delete ✅
 │   │   ├── globals.css
 │   │   ├── layout.tsx
 │   │   └── page.tsx
@@ -168,17 +163,25 @@ pctmt/
 │   │       ├── TournamentForm.tsx
 │   │       ├── ResultForm.tsx
 │   │       ├── DeleteResultButton.tsx
-│   │       └── DeleteTournamentButton.tsx
+│   │       ├── DeleteTournamentButton.tsx
+│   │       ├── StrategyForm.tsx
+│   │       ├── DeleteStrategyButton.tsx
+│   │       └── ProgressChart.tsx
 │   ├── lib/
 │   │   └── supabase/
-│   │       ├── client.ts       # Browser client ✅
-│   │       ├── server.ts       # Server client ✅
-│   │       └── middleware.ts   # Session refresh ✅
-│   └── middleware.ts           # Route protection ✅
+│   │       ├── client.ts
+│   │       ├── server.ts
+│   │       └── middleware.ts
+│   └── middleware.ts
 ├── supabase/
 │   └── migrations/
 │       └── 20260611000001_initial_schema.sql ✅
-├── .env.example
 ├── .env.local              # NOT in git
-└── README.md
+└── package.json
 ```
+
+---
+
+## Known Warnings
+
+**`middleware.ts` deprecation warning** — Next.js 16 recommends renaming `middleware.ts` to `proxy.ts`. This is a warning only; the app builds and runs correctly. Will be resolved in a future chore commit.

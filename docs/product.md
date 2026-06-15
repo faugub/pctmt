@@ -35,59 +35,58 @@ The coach is the buyer — not the academy. A coach signs up, pays, and owns the
 
 > Pricing to be validated with beta users before locking in.
 
-Payments via Stripe. Subscription billed monthly, cancel anytime.
+Payments via Stripe. Subscription billed monthly, cancel anytime. Stripe integration deferred post-MVP.
 
 ---
 
 ## Core Modules
 
-| Module | Description | Phase |
+| Module | Description | Status |
 |---|---|---|
-| **Players** | Full profiles, physical snapshots, progress over time | 2 |
-| **Sessions** | Plan classes, set objectives, log attendance | 2 |
-| **Tournaments** | Register events, record results per player and pair | 2 |
-| **Strategies** | Court diagrams, notes, tagged by zone and play type | 3 |
-| **Dashboard** | Progress charts, attendance stats, tournament history | 3 |
+| **Players** | Full profiles, physical snapshots, progress chart, session history | ✅ Live |
+| **Sessions** | Plan classes, set objectives, log attendance | ✅ Live |
+| **Tournaments** | Register events, record results per player and pair | ✅ Live |
+| **Strategies** | Play library with court zones and tags | ✅ Live |
+| **Dashboard** | Stats, progress chart, recent sessions, upcoming tournaments | ✅ Live |
+| **Stripe** | Free + pro plans, subscription billing | ⏳ Deferred |
+| **PWA** | Offline support, installable on mobile | ⏳ Deferred |
 
 ---
 
 ## Roadmap
 
 ### Phase 1 — Foundations ✅ COMPLETE (2026-06-15)
-Goal: working development environment, database designed, auth in place, app running locally.
 
 - [x] GitHub repo and project scaffold
 - [x] WSL dev environment (Fedora 42 + Node 20)
 - [x] Next.js 16 + TypeScript + Tailwind
 - [x] Supabase connected (database + auth)
 - [x] Route protection middleware
-- [x] Login page (static UI)
 - [x] Database schema (10 tables, RLS)
-- [x] SQL migration written and applied in Supabase
+- [x] SQL migration applied in Supabase
 - [x] Functional login + register (Supabase Auth)
 - [x] Basic post-login dashboard shell
 
 ### Phase 2 — Functional MVP ✅ COMPLETE (2026-06-15)
-Goal: a real coach can sign up, add players, log sessions, and record tournament results.
 
-- [x] Players module (create, view, edit, delete)
-- [x] Physical snapshots (log weight, height, scores per date)
-- [x] Sessions module (create, add players, mark attendance)
-- [x] Tournaments module (register, add results per player)
+- [x] Players module — create, view, edit, delete
+- [x] Physical snapshots — log weight, height, scores per date
+- [x] Sessions module — create, edit, delete, add players, mark attendance
+- [x] Tournaments module — create, edit, delete, add results per player
 - [x] Deploy on Vercel — https://pctmt-azure.vercel.app
-- [ ] 2–3 beta coaches testing the product
 
-### Phase 3 — Full Product (next)
-Goal: complete feature set, monetization live.
+### Phase 3 — Full Product ✅ COMPLETE (2026-06-15)
 
-- [ ] Strategies module (notes, court zones, tags)
-- [ ] Dashboard with progress charts
-- [ ] Stripe integration (free + pro plans)
-- [ ] Email notifications (session reminders, tournament alerts)
-- [ ] PWA manifest + offline support
+- [x] Strategies module — CRUD, court zone filter, tags
+- [x] Dashboard with real stats, progress chart, recent activity
+- [x] Progress chart on individual player profile
+- [x] Session attendance history on player profile
+- [x] Edit session and tournament (closes CRUD gap)
+- [ ] Stripe integration — deferred
+- [ ] Email notifications — deferred
+- [ ] PWA manifest + offline support — deferred
 
-### Phase 4 — Scale (Month 5–6+)
-Goal: native app, multiple markets, academy accounts.
+### Phase 4 — Scale
 
 - [ ] React Native app (iOS + Android)
 - [ ] Multi-language (Spanish + English)
