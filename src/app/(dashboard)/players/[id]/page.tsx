@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { deletePlayer } from '@/app/actions/players'
+import { DeletePlayerButton } from '@/components/ui/DeletePlayerButton'
 
 const LEVEL_LABEL: Record<string, string> = {
   beginner: 'Iniciación',
@@ -45,8 +45,6 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
   if (error || !player) notFound()
 
   const age = calcAge(player.birth_date)
-
-  const deleteAction = deletePlayer.bind(null, id)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -95,19 +93,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         </div>
 
         <div className="mt-8">
-          <form action={deleteAction}>
-            <button
-              type="submit"
-              className="w-full py-2.5 text-sm text-red-500 border border-red-100 rounded-lg hover:bg-red-50 transition-colors"
-              onClick={(e) => {
-                if (!confirm(`¿Eliminar a ${player.full_name}? Esta acción no se puede deshacer.`)) {
-                  e.preventDefault()
-                }
-              }}
-            >
-              Eliminar jugador
-            </button>
-          </form>
+          <DeletePlayerButton id={id} name={player.full_name} />
         </div>
       </main>
     </div>
