@@ -7,7 +7,7 @@ import { DeleteTournamentButton } from '@/components/ui/DeleteTournamentButton'
 import { addResult } from '@/app/actions/tournaments'
 
 const ROUND_LABEL: Record<string, string> = {
-  winner:       '🏆 Campeón',
+  winner:       '\ud83c\udfc6 Campe\u00f3n',
   final:        'Final',
   semifinal:    'Semifinal',
   quarterfinal: 'Cuartos de final',
@@ -18,6 +18,16 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-ES', {
     day: '2-digit', month: 'long', year: 'numeric',
   })
+}
+
+type TournamentResult = {
+  id: string
+  partner_name: string | null
+  final_round: string | null
+  sets_won: number | null
+  sets_lost: number | null
+  notes: string | null
+  players: { id: string; full_name: string } | null
 }
 
 export default async function TournamentPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,7 +47,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ id:
   const { data: results } = await supabase
     .from('tournament_results')
     .select('id, partner_name, final_round, sets_won, sets_lost, notes, players(id, full_name)')
-    .eq('tournament_id', id)
+    .eq('tournament_id', id) as { data: TournamentResult[] | null }
 
   const { data: players } = await supabase
     .from('players')
@@ -53,7 +63,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ id:
           pctmt
         </Link>
         <Link href="/tournaments" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          ← Torneos
+          \u2190 Torneos
         </Link>
       </header>
 
@@ -65,7 +75,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ id:
           <p className="text-sm text-gray-500 mt-1">
             {formatDate(tournament.start_date)}
             {tournament.end_date && tournament.end_date !== tournament.start_date
-              ? ` – ${formatDate(tournament.end_date)}`
+              ? ` \u2013 ${formatDate(tournament.end_date)}`
               : ''}
           </p>
         </div>
@@ -73,8 +83,8 @@ export default async function TournamentPage({ params }: { params: Promise<{ id:
         {/* Meta */}
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm divide-y divide-gray-50">
           {[
-            { label: 'Ubicación', value: tournament.location || '—' },
-            { label: 'Categoría', value: tournament.category || '—' },
+            { label: 'Ubicaci\u00f3n', value: tournament.location || '\u2014' },
+            { label: 'Categor\u00eda', value: tournament.category || '\u2014' },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between items-center px-5 py-4">
               <span className="text-sm text-gray-500">{label}</span>
@@ -89,57 +99,53 @@ export default async function TournamentPage({ params }: { params: Promise<{ id:
 
           {results && results.length > 0 ? (
             <ul className="space-y-3 mb-6">
-              {results.map((r) => {
-                const player = r.players as { id: string; full_name: string } | null
-                return (
-                  <li key={r.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm px-5 py-4">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-sm font-medium text-gray-900">{player?.full_name ?? '—'}</span>
-                      <DeleteResultButton
-                        resultId={r.id}
-                        tournamentId={id}
-                        playerName={player?.full_name ?? 'este jugador'}
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
-                      {r.partner_name && (
-                        <div className="flex justify-between col-span-2">
-                          <span className="text-gray-500">Pareja</span>
-                          <span className="font-medium text-gray-900">{r.partner_name}</span>
-                        </div>
-                      )}
-                      {r.final_round && (
-                        <div className="flex justify-between col-span-2">
-                          <span className="text-gray-500">Ronda</span>
-                          <span className="font-medium text-gray-900">{ROUND_LABEL[r.final_round] ?? r.final_round}</span>
-                        </div>
-                      )}
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Sets ganados</span>
-                        <span className="font-medium text-green-700">{r.sets_won ?? 0}</span>
+              {results.map((r) => (
+                <li key={r.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm px-5 py-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-900">{r.players?.full_name ?? '\u2014'}</span>
+                    <DeleteResultButton
+                      resultId={r.id}
+                      tournamentId={id}
+                      playerName={r.players?.full_name ?? 'este jugador'}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1 text-sm">
+                    {r.partner_name && (
+                      <div className="flex justify-between col-span-2">
+                        <span className="text-gray-500">Pareja</span>
+                        <span className="font-medium text-gray-900">{r.partner_name}</span>
                       </div>
-                      <div className="flex justify-between">
-                        <span className="text-gray-500">Sets perdidos</span>
-                        <span className="font-medium text-red-500">{r.sets_lost ?? 0}</span>
-                      </div>
-                    </div>
-                    {r.notes && (
-                      <p className="mt-3 text-xs text-gray-400 border-t border-gray-50 pt-3">{r.notes}</p>
                     )}
-                  </li>
-                )
-              })}
+                    {r.final_round && (
+                      <div className="flex justify-between col-span-2">
+                        <span className="text-gray-500">Ronda</span>
+                        <span className="font-medium text-gray-900">{ROUND_LABEL[r.final_round] ?? r.final_round}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Sets ganados</span>
+                      <span className="font-medium text-green-700">{r.sets_won ?? 0}</span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-gray-500">Sets perdidos</span>
+                      <span className="font-medium text-red-500">{r.sets_lost ?? 0}</span>
+                    </div>
+                  </div>
+                  {r.notes && (
+                    <p className="mt-3 text-xs text-gray-400 border-t border-gray-50 pt-3">{r.notes}</p>
+                  )}
+                </li>
+              ))}
             </ul>
           ) : (
             <p className="text-sm text-gray-400 text-center py-6 bg-white border border-gray-100 rounded-2xl mb-6">
-              Sin resultados todavía.
+              Sin resultados todav\u00eda.
             </p>
           )}
 
-          {/* Add result form */}
           {players && players.length > 0 && (
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
-              <p className="text-sm font-semibold text-gray-700 mb-4">Añadir resultado</p>
+              <p className="text-sm font-semibold text-gray-700 mb-4">A\u00f1adir resultado</p>
               <ResultForm action={addResultAction} players={players} />
             </div>
           )}
