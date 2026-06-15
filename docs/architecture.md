@@ -53,6 +53,8 @@ organizations          (optional — phase 4, multi-coach academies)
 
 RLS is enabled on all tables. Every policy is scoped to `auth.uid()` so a coach can only read and write their own data. This is enforced at the database level — application bugs cannot cause cross-coach data leakage.
 
+**Note:** The `coaches` table requires two separate policies: `for all using` (covers SELECT/UPDATE/DELETE) and `for insert with check` (covers INSERT on registration). Both are applied in Supabase.
+
 Migration file: `supabase/migrations/20260611000001_initial_schema.sql`
 
 ---
@@ -69,6 +71,16 @@ updateSession() refreshes Supabase cookie
 No valid session?  ──→  Redirect to /login
 Valid session?     ──→  Allow through to dashboard
 ```
+
+### Server Actions
+
+Auth mutations are handled via Next.js Server Actions in `src/app/actions/auth.ts`:
+
+| Action | Description |
+|---|---|
+| `login(formData)` | Calls `signInWithPassword`, redirects to `/dashboard` |
+| `register(formData)` | Calls `signUp`, inserts row into `coaches`, redirects to `/dashboard` |
+| `logout()` | Calls `signOut`, redirects to `/login` |
 
 Supabase client files:
 
@@ -93,3 +105,6 @@ The app works on any device from the first deploy without App Store approval or 
 
 **2026-06-12 — Supabase RLS as the security boundary**
 Access control lives at the database level, not only in application code. Even if a bug exists in the Next.js layer, RLS policies prevent a coach from reading another coach's data. This is non-negotiable for a multi-tenant SaaS handling personal athlete data.
+
+**2026-06-15 — Server Actions for auth mutations**
+Login, register, and logout are implemented as Next.js Server Actions rather than API routes. This avoids boilerplate, keeps auth logic server-side, and works seamlessly with the App Router redirect model.
