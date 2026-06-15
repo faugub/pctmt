@@ -183,3 +183,7 @@ create policy "coach: own results" on tournament_results
 -- strategies: own strategies
 create policy "coach: own strategies" on strategies
   for all using (coach_id = auth.uid());
+
+-- coaches: allow insert on registration
+create policy "coach: insert own row" on coaches
+  for insert with check (auth.uid() = id);
