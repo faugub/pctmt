@@ -102,6 +102,13 @@ If `.env.local` is lost, recreate it from the Supabase dashboard under **Setting
 
 Same two variables set in **Vercel → Project Settings → Environment Variables** (Production + Preview + Development).
 
+When Phase 4C (Playtomic) is implemented, add:
+
+```
+PLAYTOMIC_ENCRYPTION_KEY=<random-32-byte-hex>   # for encrypting client_secret in DB
+CRON_SECRET=<random-string>                      # validates Vercel Cron calls to /api/playtomic/sync
+```
+
 ### Auth settings
 
 - **Email confirmation:** disabled (re-enable before public launch)
@@ -113,11 +120,46 @@ Same two variables set in **Vercel → Project Settings → Environment Variable
 
 ```
 1. Supabase dashboard → SQL Editor
-2. Open supabase/migrations/20260611000001_initial_schema.sql
+2. Open the target migration file from supabase/migrations/
 3. Copy contents and run
 ```
 
-Migration status: ✅ applied 2026-06-15
+**Migration files and status:**
+
+| File | Phase | Status |
+|---|---|---|
+| `20260611000001_initial_schema.sql` | Phases 1–3 | ✅ Applied 2026-06-15 |
+| `20260615000002_phase4a_calendar_blocks.sql` | Phase 4A | ⏳ Pending |
+| `20260615000003_phase4b_plans_sharing.sql` | Phase 4B | ⏳ Pending |
+| `20260615000004_phase4c_playtomic.sql` | Phase 4C | ⏳ Pending |
+
+Always apply migrations in order. Never skip a file.
+
+---
+
+## Vercel Cron (Phase 4C — Playtomic sync)
+
+Configured in `vercel.json` at the project root:
+
+```json
+{
+  "crons": [
+    {
+      "path": "/api/playtomic/sync",
+      "schedule": "0 * * * *"
+    }
+  ]
+}
+```
+
+The cron runs every hour on the hour. The route handler at `src/app/api/playtomic/sync/route.ts` validates the `Authorization: Bearer $CRON_SECRET` header before processing — this prevents unauthorized calls to the endpoint.
+
+To test the sync manually during development:
+
+```bash
+curl -X POST http://localhost:3000/api/playtomic/sync \
+  -H "Authorization: Bearer $CRON_SECRET"
+```
 
 ---
 
@@ -130,6 +172,12 @@ pctmt/
 │   ├── architecture.md      # Stack, schema, patterns, decisions
 │   └── product.md           # Vision, roadmap, pricing
 ├── public/
+├── supabase/
+│   └── migrations/
+│       ├── 20260611000001_initial_schema.sql           # ✅ applied
+│       ├── 20260615000002_phase4a_calendar_blocks.sql  # ⏳ pending
+│       ├── 20260615000003_phase4b_plans_sharing.sql    # ⏳ pending
+│       └── 20260615000004_phase4c_playtomic.sql        # ⏳ pending
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/
@@ -140,14 +188,29 @@ pctmt/
 │   │   │   ├── players/         # CRUD + snapshots + attendance history ✅
 │   │   │   ├── sessions/        # CRUD + attendance toggle ✅
 │   │   │   ├── tournaments/     # CRUD + results per player ✅
-│   │   │   └── strategies/      # CRUD + zone filter + tags ✅
+│   │   │   ├── strategies/      # CRUD + zone filter + tags ✅
+│   │   │   ├── calendar/        # Weekly view + series management ⏳ Phase 4A
+│   │   │   ├── blocks/          # Training block library ⏳ Phase 4A
+│   │   │   ├── plans/           # Training plans + phase timeline ⏳ Phase 4B
+│   │   │   └── settings/        # Integrations (Playtomic connect) ⏳ Phase 4C
+│   │   ├── share/
+│   │   │   └── player/[token]/  # Public player profile (no auth) ⏳ Phase 4B
+│   │   ├── api/
+│   │   │   └── playtomic/
+│   │   │       ├── sync/        # Vercel Cron handler ⏳ Phase 4C
+│   │   │       └── connect/     # Save + validate credentials ⏳ Phase 4C
 │   │   ├── actions/
 │   │   │   ├── auth.ts          # login, register, logout ✅
 │   │   │   ├── players.ts       # create, update, delete ✅
 │   │   │   ├── snapshots.ts     # create, delete ✅
 │   │   │   ├── sessions.ts      # create, update, attendance, delete ✅
 │   │   │   ├── tournaments.ts   # create, update, results, delete ✅
-│   │   │   └── strategies.ts    # create, update, delete ✅
+│   │   │   ├── strategies.ts    # create, update, delete ✅
+│   │   │   ├── series.ts        # create, update, delete, generate ⏳ Phase 4A
+│   │   │   ├── blocks.ts        # create, update, delete ⏳ Phase 4A
+│   │   │   ├── sessionBlocks.ts # add, reorder, remove ⏳ Phase 4A
+│   │   │   ├── plans.ts         # create, update, delete, link ⏳ Phase 4B
+│   │   │   └── sharing.ts       # enable, disable, regenerate token ⏳ Phase 4B
 │   │   ├── globals.css
 │   │   ├── layout.tsx
 │   │   └── page.tsx
@@ -166,17 +229,21 @@ pctmt/
 │   │       ├── DeleteTournamentButton.tsx
 │   │       ├── StrategyForm.tsx
 │   │       ├── DeleteStrategyButton.tsx
-│   │       └── ProgressChart.tsx
+│   │       ├── ProgressChart.tsx
+│   │       ├── WeeklyCalendar.tsx    # ⏳ Phase 4A
+│   │       ├── SeriesForm.tsx        # ⏳ Phase 4A
+│   │       ├── BlockLibraryPanel.tsx # ⏳ Phase 4A
+│   │       ├── SessionBlockList.tsx  # ⏳ Phase 4A
+│   │       ├── PlanTimeline.tsx      # ⏳ Phase 4B
+│   │       └── PlaytomicBadge.tsx    # ⏳ Phase 4C
 │   ├── lib/
 │   │   └── supabase/
 │   │       ├── client.ts
 │   │       ├── server.ts
 │   │       └── middleware.ts
 │   └── middleware.ts
-├── supabase/
-│   └── migrations/
-│       └── 20260611000001_initial_schema.sql ✅
-├── .env.local              # NOT in git
+├── vercel.json              # Cron config (Phase 4C)
+├── .env.local               # NOT in git
 └── package.json
 ```
 
