@@ -5,9 +5,9 @@ import { logout } from '@/app/actions/auth'
 import { ProgressChart } from '@/components/ui/ProgressChart'
 
 const TYPE_LABEL: Record<string, string> = {
-  technical: 'T\u00e9cnica',
-  physical:  'F\u00edsica',
-  tactical:  'T\u00e1ctica',
+  technical: 'Técnica',
+  physical:  'Física',
+  tactical:  'Táctica',
   match:     'Partido',
   mixed:     'Mixta',
 }
@@ -16,6 +16,19 @@ function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-ES', {
     weekday: 'short', day: '2-digit', month: 'short',
   })
+}
+
+type LatestSnapshotRow = {
+  player_id: string
+  players: { full_name: string } | null
+}
+
+type SnapshotRow = {
+  recorded_at: string
+  endurance_score: number | null
+  speed_score: number | null
+  strength_score: number | null
+  technique_score: number | null
 }
 
 export default async function DashboardPage() {
@@ -58,22 +71,13 @@ export default async function DashboardPage() {
     .select('player_id, players(full_name)')
     .order('recorded_at', { ascending: false })
     .limit(1)
-    .single()
-
-  type SnapshotRow = {
-    recorded_at: string
-    endurance_score: number | null
-    speed_score: number | null
-    strength_score: number | null
-    technique_score: number | null
-  }
+    .single() as { data: LatestSnapshotRow | null }
 
   let chartSnapshots: SnapshotRow[] = []
   let chartPlayerName = ''
 
   if (latestSnapshot?.player_id) {
-    const player = latestSnapshot.players as { full_name: string } | null
-    chartPlayerName = player?.full_name ?? ''
+    chartPlayerName = latestSnapshot.players?.full_name ?? ''
 
     const { data: snaps } = await supabase
       .from('player_snapshots')
@@ -85,10 +89,10 @@ export default async function DashboardPage() {
   }
 
   const stats = [
-    { label: 'Jugadores',   value: playerCount.count ?? 0,     href: '/players',     emoji: '\ud83c\udfbe' },
-    { label: 'Sesiones',    value: sessionCount.count ?? 0,    href: '/sessions',    emoji: '\ud83d\udccb' },
-    { label: 'Torneos',     value: tournamentCount.count ?? 0, href: '/tournaments', emoji: '\ud83c\udfc6' },
-    { label: 'Estrategias', value: strategyCount.count ?? 0,   href: '/strategies',  emoji: '\ud83e\udde0' },
+    { label: 'Jugadores',   value: playerCount.count ?? 0,     href: '/players',     emoji: '🎾' },
+    { label: 'Sesiones',    value: sessionCount.count ?? 0,    href: '/sessions',    emoji: '📋' },
+    { label: 'Torneos',     value: tournamentCount.count ?? 0, href: '/tournaments', emoji: '🏆' },
+    { label: 'Estrategias', value: strategyCount.count ?? 0,   href: '/strategies',  emoji: '🧠' },
   ]
 
   return (
@@ -109,7 +113,7 @@ export default async function DashboardPage() {
 
         {/* Greeting */}
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Hola, {displayName} \ud83d\udc4b</h1>
+          <h1 className="text-2xl font-semibold text-gray-900">Hola, {displayName} 👋</h1>
           <p className="text-sm text-gray-500 mt-0.5">
             Plan: <span className="font-medium text-gray-700 capitalize">{coach?.plan ?? 'free'}</span>
           </p>
@@ -143,7 +147,7 @@ export default async function DashboardPage() {
           {/* Recent sessions */}
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm px-5 py-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-gray-900">\u00daltimas sesiones</h2>
+              <h2 className="text-base font-semibold text-gray-900">Últimas sesiones</h2>
               <Link href="/sessions" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">Ver todas</Link>
             </div>
             {recentSessions && recentSessions.length > 0 ? (
@@ -155,23 +159,23 @@ export default async function DashboardPage() {
                         <p className="text-sm font-medium text-gray-900">{s.title}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {formatDate(s.session_date)}
-                          {s.session_type ? ` \u00b7 ${TYPE_LABEL[s.session_type] ?? s.session_type}` : ''}
+                          {s.session_type ? ` · ${TYPE_LABEL[s.session_type] ?? s.session_type}` : ''}
                         </p>
                       </div>
-                      <span className="text-gray-300">\u203a</span>
+                      <span className="text-gray-300">›</span>
                     </Link>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-gray-400">Sin sesiones todav\u00eda.</p>
+              <p className="text-sm text-gray-400">Sin sesiones todavía.</p>
             )}
           </div>
 
           {/* Upcoming tournaments */}
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm px-5 py-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-gray-900">Pr\u00f3ximos torneos</h2>
+              <h2 className="text-base font-semibold text-gray-900">Próximos torneos</h2>
               <Link href="/tournaments" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">Ver todos</Link>
             </div>
             {upcomingTournaments && upcomingTournaments.length > 0 ? (
@@ -183,16 +187,16 @@ export default async function DashboardPage() {
                         <p className="text-sm font-medium text-gray-900">{t.name}</p>
                         <p className="text-xs text-gray-400 mt-0.5">
                           {formatDate(t.start_date)}
-                          {t.location ? ` \u00b7 ${t.location}` : ''}
+                          {t.location ? ` · ${t.location}` : ''}
                         </p>
                       </div>
-                      <span className="text-gray-300">\u203a</span>
+                      <span className="text-gray-300">›</span>
                     </Link>
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-gray-400">No hay torneos pr\u00f3ximos.</p>
+              <p className="text-sm text-gray-400">No hay torneos próximos.</p>
             )}
           </div>
 
