@@ -12,6 +12,7 @@ Operational procedures, environment setup, and credentials reference.
 | Node.js | v20.20.2 (via fnm) |
 | Package manager | npm |
 | Test browser | Chrome on Windows → localhost:3000 |
+| Editor | VS Code with Remote - WSL extension |
 
 ### Start the dev server
 
@@ -20,6 +21,15 @@ cd ~/pctmt
 npm run dev
 # Open http://localhost:3000
 ```
+
+### Open in VS Code (from WSL terminal)
+
+```bash
+cd ~/pctmt
+code .
+```
+
+Requires the **Remote - WSL** extension installed in VS Code.
 
 ### Stop the server
 
@@ -35,7 +45,7 @@ Ctrl+C
 |---|---|
 | GitHub | https://github.com/faugub/pctmt |
 | Main branch | `main` |
-| Direct push to main | Yes (phase 1 only) |
+| Direct push to main | Yes (phase 1–2) |
 
 ### Commit and push
 
@@ -55,6 +65,8 @@ Token expires every 90 days. Generate a new one at https://github.com/settings/t
 ```bash
 git remote set-url origin https://faugub:NEW_TOKEN@github.com/faugub/pctmt.git
 ```
+
+Also update the token in **claude.ai → Settings → Integrations → GitHub** so the MCP can write to the repo.
 
 ---
 
@@ -79,6 +91,11 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<your-publishable-key>
 
 If `.env.local` is lost, recreate it with values from the Supabase dashboard under Settings → API Keys.
 
+### Auth settings
+
+- **Email confirmation:** disabled (dev mode — re-enable before production)
+- **Auth provider:** Email + Password only
+
 ### Running SQL migrations
 
 ```
@@ -87,7 +104,7 @@ If `.env.local` is lost, recreate it with values from the Supabase dashboard und
 3. Copy contents and run
 ```
 
-> Pending: set up Supabase CLI for terminal-based migrations.
+Migration status: ✅ applied 2026-06-15
 
 ---
 
@@ -104,12 +121,15 @@ pctmt/
 │   ├── app/
 │   │   ├── (auth)/
 │   │   │   ├── login/      # Login page ✅
-│   │   │   └── register/   # Register page (pending)
+│   │   │   └── register/   # Register page ✅
 │   │   ├── (dashboard)/
-│   │   │   ├── players/    # Players module (pending)
-│   │   │   ├── sessions/   # Sessions module (pending)
-│   │   │   ├── tournaments/ # Tournaments module (pending)
-│   │   │   └── strategies/ # Strategies module (pending)
+│   │   │   ├── dashboard/  # Dashboard shell ✅
+│   │   │   ├── players/    # Players module (pending — Phase 2)
+│   │   │   ├── sessions/   # Sessions module (pending — Phase 2)
+│   │   │   ├── tournaments/ # Tournaments module (pending — Phase 2)
+│   │   │   └── strategies/ # Strategies module (pending — Phase 3)
+│   │   ├── actions/
+│   │   │   └── auth.ts     # Server Actions: login, register, logout ✅
 │   │   ├── globals.css
 │   │   ├── layout.tsx
 │   │   └── page.tsx
