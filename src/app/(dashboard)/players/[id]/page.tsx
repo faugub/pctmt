@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { DeletePlayerButton } from '@/components/ui/DeletePlayerButton'
 import { DeleteSnapshotButton } from '@/components/ui/DeleteSnapshotButton'
+import { ProgressChart } from '@/components/ui/ProgressChart'
 
 const LEVEL_LABEL: Record<string, string> = {
   beginner: 'Iniciación',
@@ -16,9 +17,21 @@ const HAND_LABEL: Record<string, string> = {
   left: 'Izquierda',
 }
 
+const TYPE_LABEL: Record<string, string> = {
+  technical: 'Técnica',
+  physical:  'Física',
+  tactical:  'Táctica',
+  match:     'Partido',
+  mixed:     'Mixta',
+}
+
 function formatDate(dateStr: string | null) {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' })
+}
+
+function formatShortDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('es-ES', { weekday: 'short', day: '2-digit', month: 'short' })
 }
 
 function calcAge(dateStr: string | null) {
@@ -44,6 +57,23 @@ function ScoreBadge({ value }: { value: number | null }) {
   )
 }
 
+type SnapshotRow = {
+  id: string
+  recorded_at: string
+  weight_kg: number | null
+  height_cm: number | null
+  endurance_score: number | null
+  speed_score: number | null
+  strength_score: number | null
+  technique_score: number | null
+  notes: string | null
+}
+
+type SessionAttendance = {
+  attended: boolean
+  sessions: { id: string; title: string; session_date: string; session_type: string | null } | null
+}
+
 export default async function PlayerPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
@@ -62,9 +92,16 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
     .from('player_snapshots')
     .select('*')
     .eq('player_id', id)
-    .order('recorded_at', { ascending: false })
+    .order('recorded_at', { ascending: false }) as { data: SnapshotRow[] | null }
+
+  const { data: attendance } = await supabase
+    .from('session_players')
+    .select('attended, sessions(id, title, session_date, session_type)')
+    .eq('player_id', id)
+    .order('sessions(session_date)', { ascending: false }) as { data: SessionAttendance[] | null }
 
   const age = calcAge(player.birth_date)
+  const chartSnapshots = [...(snapshots ?? [])].reverse()
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -115,6 +152,14 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
           ))}
         </div>
 
+        {/* Progress chart */}
+        {chartSnapshots.length >= 2 && (
+          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm px-6 py-5">
+            <h2 className="text-base font-semibold text-gray-900 mb-4">Progreso</h2>
+            <ProgressChart snapshots={chartSnapshots} playerName={player.full_name} />
+          </div>
+        )}
+
         {/* Snapshots */}
         <div>
           <div className="flex items-center justify-between mb-4">
@@ -133,11 +178,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 <li key={s.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm px-5 py-4">
                   <div className="flex items-center justify-between mb-3">
                     <span className="text-sm font-medium text-gray-900">{formatDate(s.recorded_at)}</span>
-                    <DeleteSnapshotButton
-                      snapshotId={s.id}
-                      playerId={id}
-                      date={formatDate(s.recorded_at)}
-                    />
+                    <DeleteSnapshotButton snapshotId={s.id} playerId={id} date={formatDate(s.recorded_at)} />
                   </div>
                   <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
                     {s.weight_kg && (
@@ -183,6 +224,44 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
                 Registrar el primero
               </Link>
             </div>
+          )}
+        </div>
+
+        {/* Session attendance */}
+        <div>
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Sesiones</h2>
+          {attendance && attendance.length > 0 ? (
+            <ul className="space-y-2">
+              {attendance.map((a, i) => {
+                const s = a.sessions
+                if (!s) return null
+                return (
+                  <li key={i}>
+                    <Link
+                      href={`/sessions/${s.id}`}
+                      className="flex items-center justify-between px-5 py-3 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">{s.title}</p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          {formatShortDate(s.session_date)}
+                          {s.session_type ? ` · ${TYPE_LABEL[s.session_type] ?? s.session_type}` : ''}
+                        </p>
+                      </div>
+                      <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                        a.attended ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-400'
+                      }`}>
+                        {a.attended ? 'Asistió' : 'Faltó'}
+                      </span>
+                    </Link>
+                  </li>
+                )
+              })}
+            </ul>
+          ) : (
+            <p className="text-sm text-gray-400 text-center py-6 bg-white border border-gray-100 rounded-2xl">
+              No ha participado en ninguna sesión todavía.
+            </p>
           )}
         </div>
 

@@ -39,6 +39,29 @@ export async function createSession(formData: FormData) {
   redirect(`/sessions/${session.id}`)
 }
 
+export async function updateSession(id: string, formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { error } = await supabase
+    .from('sessions')
+    .update({
+      title: formData.get('title') as string,
+      session_date: formData.get('session_date') as string,
+      duration_min: formData.get('duration_min') ? Number(formData.get('duration_min')) : null,
+      session_type: (formData.get('session_type') as string) || null,
+      objectives: (formData.get('objectives') as string) || null,
+      notes: (formData.get('notes') as string) || null,
+    })
+    .eq('id', id)
+    .eq('coach_id', user.id)
+
+  if (error) throw new Error(error.message)
+
+  redirect(`/sessions/${id}`)
+}
+
 export async function updateAttendance(sessionId: string, playerId: string, attended: boolean) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

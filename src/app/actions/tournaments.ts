@@ -26,6 +26,28 @@ export async function createTournament(formData: FormData) {
   redirect(`/tournaments/${tournament.id}`)
 }
 
+export async function updateTournament(id: string, formData: FormData) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { error } = await supabase
+    .from('tournaments')
+    .update({
+      name: formData.get('name') as string,
+      start_date: formData.get('start_date') as string,
+      end_date: (formData.get('end_date') as string) || null,
+      location: (formData.get('location') as string) || null,
+      category: (formData.get('category') as string) || null,
+    })
+    .eq('id', id)
+    .eq('coach_id', user.id)
+
+  if (error) throw new Error(error.message)
+
+  redirect(`/tournaments/${id}`)
+}
+
 export async function addResult(tournamentId: string, formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

@@ -1,11 +1,11 @@
 'use client'
 
-type Player = { id: string; full_name: string }
-
-type Props = {
-  action: (formData: FormData) => Promise<void>
-  players: Player[]
-}
+const ZONES = [
+  { value: 'red',      label: 'Red' },
+  { value: 'midcourt', label: 'Mediocampo' },
+  { value: 'back',     label: 'Fondo' },
+  { value: 'full',     label: 'Campo completo' },
+]
 
 const SESSION_TYPES = [
   { value: 'technical', label: 'Técnica' },
@@ -15,10 +15,30 @@ const SESSION_TYPES = [
   { value: 'mixed',     label: 'Mixta' },
 ]
 
-export function SessionForm({ action, players }: Props) {
+type Player = { id: string; full_name: string }
+
+type DefaultValues = {
+  title?: string
+  session_date?: string
+  duration_min?: number | null
+  session_type?: string | null
+  objectives?: string | null
+  notes?: string | null
+}
+
+export function SessionForm({
+  action,
+  players,
+  defaultValues = {},
+  submitLabel = 'Crear sesión',
+}: {
+  action: (formData: FormData) => Promise<void>
+  players: Player[]
+  defaultValues?: DefaultValues
+  submitLabel?: string
+}) {
   return (
     <form action={action} className="space-y-5">
-      {/* Title */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">
           Título <span className="text-red-500">*</span>
@@ -27,12 +47,12 @@ export function SessionForm({ action, players }: Props) {
           name="title"
           type="text"
           required
+          defaultValue={defaultValues.title ?? ''}
           placeholder="Ej. Entrenamiento de volea"
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
         />
       </div>
 
-      {/* Date + Duration */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -42,7 +62,7 @@ export function SessionForm({ action, players }: Props) {
             name="session_date"
             type="date"
             required
-            defaultValue={new Date().toISOString().split('T')[0]}
+            defaultValue={defaultValues.session_date ?? new Date().toISOString().split('T')[0]}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
           />
         </div>
@@ -53,18 +73,18 @@ export function SessionForm({ action, players }: Props) {
             type="number"
             min="0"
             step="5"
+            defaultValue={defaultValues.duration_min ?? ''}
             placeholder="90"
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
           />
         </div>
       </div>
 
-      {/* Type */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
         <select
           name="session_type"
-          defaultValue=""
+          defaultValue={defaultValues.session_type ?? ''}
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 bg-white"
         >
           <option value="">—</option>
@@ -74,29 +94,28 @@ export function SessionForm({ action, players }: Props) {
         </select>
       </div>
 
-      {/* Objectives */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Objetivos</label>
         <textarea
           name="objectives"
           rows={2}
+          defaultValue={defaultValues.objectives ?? ''}
           placeholder="¿Qué trabajamos hoy?"
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none"
         />
       </div>
 
-      {/* Notes */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
         <textarea
           name="notes"
           rows={2}
+          defaultValue={defaultValues.notes ?? ''}
           placeholder="Observaciones generales..."
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none"
         />
       </div>
 
-      {/* Players */}
       {players.length > 0 && (
         <div>
           <p className="text-sm font-medium text-gray-700 mb-2">Jugadores convocados</p>
@@ -122,7 +141,7 @@ export function SessionForm({ action, players }: Props) {
           type="submit"
           className="w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
         >
-          Crear sesión
+          {submitLabel}
         </button>
       </div>
     </form>

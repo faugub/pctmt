@@ -1,6 +1,29 @@
 'use client'
 
-export function TournamentForm({ action }: { action: (formData: FormData) => Promise<void> }) {
+const ZONES = [
+  { value: 'red',      label: 'Red' },
+  { value: 'midcourt', label: 'Mediocampo' },
+  { value: 'back',     label: 'Fondo' },
+  { value: 'full',     label: 'Campo completo' },
+]
+
+type DefaultValues = {
+  name?: string
+  start_date?: string
+  end_date?: string | null
+  location?: string | null
+  category?: string | null
+}
+
+export function TournamentForm({
+  action,
+  defaultValues = {},
+  submitLabel = 'Crear torneo',
+}: {
+  action: (formData: FormData) => Promise<void>
+  defaultValues?: DefaultValues
+  submitLabel?: string
+}) {
   return (
     <form action={action} className="space-y-5">
       <div>
@@ -11,6 +34,7 @@ export function TournamentForm({ action }: { action: (formData: FormData) => Pro
           name="name"
           type="text"
           required
+          defaultValue={defaultValues.name ?? ''}
           placeholder="Ej. Open Ciudad de Madrid"
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
         />
@@ -25,7 +49,7 @@ export function TournamentForm({ action }: { action: (formData: FormData) => Pro
             name="start_date"
             type="date"
             required
-            defaultValue={new Date().toISOString().split('T')[0]}
+            defaultValue={defaultValues.start_date ?? new Date().toISOString().split('T')[0]}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
           />
         </div>
@@ -34,6 +58,7 @@ export function TournamentForm({ action }: { action: (formData: FormData) => Pro
           <input
             name="end_date"
             type="date"
+            defaultValue={defaultValues.end_date ?? ''}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
           />
         </div>
@@ -44,6 +69,7 @@ export function TournamentForm({ action }: { action: (formData: FormData) => Pro
         <input
           name="location"
           type="text"
+          defaultValue={defaultValues.location ?? ''}
           placeholder="Ej. Club Pádel Norte, Madrid"
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
         />
@@ -54,6 +80,7 @@ export function TournamentForm({ action }: { action: (formData: FormData) => Pro
         <input
           name="category"
           type="text"
+          defaultValue={defaultValues.category ?? ''}
           placeholder="Ej. Masculino 3ª, Femenino 4ª, Mixto"
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300"
         />
@@ -64,7 +91,7 @@ export function TournamentForm({ action }: { action: (formData: FormData) => Pro
           type="submit"
           className="w-full py-2.5 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
         >
-          Crear torneo
+          {submitLabel}
         </button>
       </div>
     </form>
