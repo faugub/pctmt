@@ -5,9 +5,9 @@ import { AttendanceToggle } from '@/components/ui/AttendanceToggle'
 import { DeleteSessionButton } from '@/components/ui/DeleteSessionButton'
 
 const TYPE_LABEL: Record<string, string> = {
-  technical: 'T\u00e9cnica',
-  physical:  'F\u00edsica',
-  tactical:  'T\u00e1ctica',
+  technical: 'Técnica',
+  physical:  'Física',
+  tactical:  'Táctica',
   match:     'Partido',
   mixed:     'Mixta',
 }
@@ -53,25 +53,33 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
           pctmt
         </Link>
         <Link href="/sessions" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          \u2190 Sesiones
+          ← Sesiones
         </Link>
       </header>
 
       <main className="max-w-lg mx-auto px-6 py-10 space-y-8">
 
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{session.title}</h1>
-          <p className="text-sm text-gray-500 mt-1 capitalize">{formatDate(session.session_date)}</p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">{session.title}</h1>
+            <p className="text-sm text-gray-500 mt-1 capitalize">{formatDate(session.session_date)}</p>
+          </div>
+          <Link
+            href={`/sessions/${id}/edit`}
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:border-gray-400 transition-colors flex-shrink-0"
+          >
+            Editar
+          </Link>
         </div>
 
         {/* Meta */}
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm divide-y divide-gray-50">
           {[
-            { label: 'Tipo', value: session.session_type ? (TYPE_LABEL[session.session_type] ?? session.session_type) : '\u2014' },
-            { label: 'Duraci\u00f3n', value: session.duration_min ? `${session.duration_min} min` : '\u2014' },
-            { label: 'Objetivos', value: session.objectives || '\u2014' },
-            { label: 'Notas', value: session.notes || '\u2014' },
+            { label: 'Tipo', value: session.session_type ? (TYPE_LABEL[session.session_type] ?? session.session_type) : '—' },
+            { label: 'Duración', value: session.duration_min ? `${session.duration_min} min` : '—' },
+            { label: 'Objetivos', value: session.objectives || '—' },
+            { label: 'Notas', value: session.notes || '—' },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between items-start px-5 py-4 gap-4">
               <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
@@ -103,7 +111,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
             </div>
           ) : (
             <p className="text-sm text-gray-400 text-center py-6 bg-white border border-gray-100 rounded-2xl">
-              No hay jugadores en esta sesi\u00f3n.
+              No hay jugadores en esta sesión.
             </p>
           )}
         </div>

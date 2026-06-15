@@ -7,7 +7,7 @@ import { DeleteTournamentButton } from '@/components/ui/DeleteTournamentButton'
 import { addResult } from '@/app/actions/tournaments'
 
 const ROUND_LABEL: Record<string, string> = {
-  winner:       '\ud83c\udfc6 Campe\u00f3n',
+  winner:       '🏆 Campeón',
   final:        'Final',
   semifinal:    'Semifinal',
   quarterfinal: 'Cuartos de final',
@@ -63,28 +63,36 @@ export default async function TournamentPage({ params }: { params: Promise<{ id:
           pctmt
         </Link>
         <Link href="/tournaments" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          \u2190 Torneos
+          ← Torneos
         </Link>
       </header>
 
       <main className="max-w-lg mx-auto px-6 py-10 space-y-8">
 
         {/* Header */}
-        <div>
-          <h1 className="text-2xl font-semibold text-gray-900">{tournament.name}</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            {formatDate(tournament.start_date)}
-            {tournament.end_date && tournament.end_date !== tournament.start_date
-              ? ` \u2013 ${formatDate(tournament.end_date)}`
-              : ''}
-          </p>
+        <div className="flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-semibold text-gray-900">{tournament.name}</h1>
+            <p className="text-sm text-gray-500 mt-1">
+              {formatDate(tournament.start_date)}
+              {tournament.end_date && tournament.end_date !== tournament.start_date
+                ? ` – ${formatDate(tournament.end_date)}`
+                : ''}
+            </p>
+          </div>
+          <Link
+            href={`/tournaments/${id}/edit`}
+            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:border-gray-400 transition-colors flex-shrink-0"
+          >
+            Editar
+          </Link>
         </div>
 
         {/* Meta */}
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm divide-y divide-gray-50">
           {[
-            { label: 'Ubicaci\u00f3n', value: tournament.location || '\u2014' },
-            { label: 'Categor\u00eda', value: tournament.category || '\u2014' },
+            { label: 'Ubicación', value: tournament.location || '—' },
+            { label: 'Categoría', value: tournament.category || '—' },
           ].map(({ label, value }) => (
             <div key={label} className="flex justify-between items-center px-5 py-4">
               <span className="text-sm text-gray-500">{label}</span>
@@ -102,7 +110,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ id:
               {results.map((r) => (
                 <li key={r.id} className="bg-white border border-gray-100 rounded-2xl shadow-sm px-5 py-4">
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-900">{r.players?.full_name ?? '\u2014'}</span>
+                    <span className="text-sm font-medium text-gray-900">{r.players?.full_name ?? '—'}</span>
                     <DeleteResultButton
                       resultId={r.id}
                       tournamentId={id}
@@ -139,13 +147,13 @@ export default async function TournamentPage({ params }: { params: Promise<{ id:
             </ul>
           ) : (
             <p className="text-sm text-gray-400 text-center py-6 bg-white border border-gray-100 rounded-2xl mb-6">
-              Sin resultados todav\u00eda.
+              Sin resultados todavía.
             </p>
           )}
 
           {players && players.length > 0 && (
             <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
-              <p className="text-sm font-semibold text-gray-700 mb-4">A\u00f1adir resultado</p>
+              <p className="text-sm font-semibold text-gray-700 mb-4">Añadir resultado</p>
               <ResultForm action={addResultAction} players={players} />
             </div>
           )}
