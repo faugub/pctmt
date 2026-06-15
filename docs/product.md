@@ -67,17 +67,17 @@ Goal: working development environment, database designed, auth in place, app run
 - [x] Functional login + register (Supabase Auth)
 - [x] Basic post-login dashboard shell
 
-### Phase 2 — Functional MVP (current)
+### Phase 2 — Functional MVP ✅ COMPLETE (2026-06-15)
 Goal: a real coach can sign up, add players, log sessions, and record tournament results.
 
-- [ ] Players module (create, view, edit, delete)
-- [ ] Physical snapshots (log weight, height, scores)
-- [ ] Sessions module (create, add players, mark attendance)
-- [ ] Tournaments module (register, add results per player)
-- [ ] Deploy on Vercel (public URL)
+- [x] Players module (create, view, edit, delete)
+- [x] Physical snapshots (log weight, height, scores per date)
+- [x] Sessions module (create, add players, mark attendance)
+- [x] Tournaments module (register, add results per player)
+- [x] Deploy on Vercel — https://pctmt-azure.vercel.app
 - [ ] 2–3 beta coaches testing the product
 
-### Phase 3 — Full Product (Weeks 11–18)
+### Phase 3 — Full Product (next)
 Goal: complete feature set, monetization live.
 
 - [ ] Strategies module (notes, court zones, tags)
@@ -100,6 +100,6 @@ Goal: native app, multiple markets, academy accounts.
 
 **vs a notebook:** Progress is searchable, shareable, and chartable. A coach can show a player exactly how their endurance score improved over 6 months.
 
-**vs a generic tool (Notion, spreadsheet):** Built specifically for padel. Session types, tournament categories, court zones, dominant hand — the data model speaks the coach's language.
+**vs a generic tool (Notion, spreadsheet):** Built specifically for padel. Session types, tournament categories, court zones, dominant hand — the data model speaks the coach’s language.
 
 **vs other coaching apps:** Focused on padel first. Simpler and cheaper than broad sports management platforms aimed at academies or clubs.
