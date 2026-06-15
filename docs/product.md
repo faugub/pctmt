@@ -53,7 +53,7 @@ Payments via Stripe. Subscription billed monthly, cancel anytime.
 
 ## Roadmap
 
-### Phase 1 — Foundations (Weeks 1–3)
+### Phase 1 — Foundations ✅ COMPLETE (2026-06-15)
 Goal: working development environment, database designed, auth in place, app running locally.
 
 - [x] GitHub repo and project scaffold
@@ -63,15 +63,13 @@ Goal: working development environment, database designed, auth in place, app run
 - [x] Route protection middleware
 - [x] Login page (static UI)
 - [x] Database schema (10 tables, RLS)
-- [x] SQL migration written
-- [ ] SQL migration applied in Supabase
-- [ ] Functional login + register (Supabase Auth)
-- [ ] Basic post-login dashboard shell
+- [x] SQL migration written and applied in Supabase
+- [x] Functional login + register (Supabase Auth)
+- [x] Basic post-login dashboard shell
 
-### Phase 2 — Functional MVP (Weeks 4–10)
+### Phase 2 — Functional MVP (current)
 Goal: a real coach can sign up, add players, log sessions, and record tournament results.
 
-- [ ] Register + onboarding flow
 - [ ] Players module (create, view, edit, delete)
 - [ ] Physical snapshots (log weight, height, scores)
 - [ ] Sessions module (create, add players, mark attendance)
