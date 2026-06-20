@@ -8,7 +8,7 @@ Vision, target customer, roadmap, and pricing.
 
 **pctmt** is a SaaS platform built for padel coaches who want to digitize their work. It replaces notebooks and spreadsheets with a purpose-built tool for managing players, planning training sessions, tracking tournament results, and building a strategy library.
 
-The core value proposition: a coach can show a player their progress over months — physical metrics, tournament history, session attendance — in a way that a notebook never could. As the product matures, it becomes the operating system of a professional padel coach: calendar, planning, content library, player development, and external integrations in one place.
+The core value proposition: a coach can show a player their progress over months — physical metrics, tournament history, session attendance — in a way that a notebook never could. The product is now the operating system of a professional padel coach: calendar, planning, content library, player development, and (soon) external integrations in one place.
 
 ---
 
@@ -50,10 +50,10 @@ Payments via Stripe. Subscription billed monthly, cancel anytime. Stripe integra
 | **Tournaments** | Register events, record results per player and pair | ✅ Live |
 | **Strategies** | Play library with court zones and tags | ✅ Live |
 | **Dashboard** | Stats, progress chart, recent sessions, upcoming tournaments | ✅ Live |
-| **Calendar** | Weekly 7-column view, recurring series, session type classification | 🔜 Phase 4A |
-| **Training blocks** | Reusable exercise block library; drag or click into sessions | 🔜 Phase 4A |
-| **Training plans** | Multi-session plans with phases, for groups or individual players | 🔜 Phase 4B |
-| **Shared player profile** | Public read-only progress link for players, shareable via WhatsApp | 🔜 Phase 4B |
+| **Calendar** | Weekly 7-column view, recurring series, session type classification | ✅ Live |
+| **Training blocks** | Reusable exercise block library; link to strategies | ✅ Live |
+| **Training plans** | Multi-session plans with phases, for groups or individual players | ✅ Live |
+| **Shared player profile** | Public read-only progress link for players, shareable via WhatsApp | ✅ Live |
 | **Playtomic sync** | Import club bookings from Playtomic, convert to sessions in one click | 🔜 Phase 4C |
 | **Stripe** | Free + Pro plan enforcement, subscription billing | ⏳ Phase 5 |
 | **PWA** | Offline support, installable on mobile, push notifications | ⏳ Phase 5 |
@@ -93,25 +93,31 @@ Payments via Stripe. Subscription billed monthly, cancel anytime. Stripe integra
 - [ ] Email notifications — deferred
 - [ ] PWA manifest + offline support — deferred to Phase 5
 
-### Phase 4A — Calendar + Training Blocks
+### Phase 4A — Calendar + Training Blocks ✅ COMPLETE (2026-06-20)
 
 Makes sessions feel structured and professional. The coach stops typing from scratch every class.
 
-- [ ] **Session series** — recurring schedules (e.g. "Academia B1 · Tue+Thu · 18:00 · 90 min") with default player list, session type (academy / individual / pairs), category, and level
-- [ ] **Weekly calendar** — 7-column view (Mon–Sun with time slots), sessions rendered as cards with color coding by type
-- [ ] **Recurrence edit scope** — when editing a session in a series, coach chooses: only this / this and future / entire series (stored via `series_id` + `series_index` on the `sessions` table)
-- [ ] **Training blocks library** — global reusable blocks per coach: warmup, technique, physical, tactical, match play, cool-down. Each has title, type, duration, description, tags, and optional link to an existing strategy
-- [ ] **Blocks on sessions** — add blocks from library or create inline; reorder with drag or up/down buttons; override duration per instance; custom notes per block
-- [ ] **Schema migration** — `session_series`, `training_blocks`, `session_blocks`; add `series_id UUID` and `series_index INT` to existing `sessions` table
+- [x] **Session series** — recurring schedules (e.g. "Academia B1 · Tue+Thu · 18:00 · 90 min") with default player list, session type (academy / individual / pairs), category, and level
+- [x] **Weekly calendar** — 7-column view (Mon–Sun), sessions rendered as cards with color coding by type, week navigation
+- [x] **Recurrence edit scope** — when editing a series, coach chooses: only the template (future generations) / future sessions / entire series (regenerates via `series_id` + `series_index` on `sessions`)
+- [x] **Training blocks library** — global reusable blocks per coach: warmup, technique, physical, tactical, match play, cool-down. Each has title, type, duration, description, tags, and optional link to an existing strategy
+- [x] **Dashboard navigation** — Calendar and Bloques surfaced as primary entry points
+- [x] **Schema migration** — `session_series`, `training_blocks`, `session_blocks`; `series_id` + `series_index` added to `sessions`
 
-### Phase 4B — Training Plans + Player Sharing
+**Not yet built from the original scope:** drag-and-drop block reordering on sessions, and the `session_blocks` UI itself (schema and Server Actions exist; the session-detail panel to attach blocks is still pending — candidate for a fast-follow).
+
+### Phase 4B — Training Plans + Player Sharing ✅ COMPLETE (2026-06-20)
 
 The layer that makes coaching value visible — to the coach, to the player, and to whoever is paying for lessons.
 
-- [ ] **Training plans** — multi-session plans attached to either a session series (group plan) or an individual player (individual plan). Define phases, assign blocks per planned session, set an overall goal. `plan_sessions.session_id` fills in as real sessions occur, linking plan to reality automatically
-- [ ] **Plan progress view** — timeline showing planned vs completed sessions per plan, phase color bands, completion percentage. Coach sees at a glance if they're on track
-- [ ] **Shared player profile** — public read-only link at `/share/player/[token]`, shareable via WhatsApp or any channel. Shows progress chart, last-month attendance rate, tournaments played. No account required for the player. This is the "wow moment" that justifies the coach's subscription fee to themselves
-- [ ] **Session report summary** — after marking attendance, one-tap summary of blocks covered and notes, stored per session for future reference
+- [x] **Training plans** — multi-session plans attached to either a session series (group plan) or an individual player (individual plan), via the `target_type`/`target_id` polymorphic pattern. Auto-generates one `plan_sessions` slot per planned session on creation
+- [x] **Phases** — optional color-coded groupings within a plan, with objectives and session counts
+- [x] **Plan progress view** — timeline showing planned vs done vs skipped sessions, completion percentage bar
+- [x] **Shared player profile** — public read-only link at `/share/player/[token]`, shareable via WhatsApp. Shows progress chart, last-30-day attendance rate, last 5 tournament results. No account required. Toggle, copy-link, and regenerate-token UI lives on the player detail page
+- [x] **Public route exemption** — `/share` excluded from the auth middleware; access gated entirely by Supabase RLS (`share_enabled = true`)
+- [x] **Dashboard navigation** — Planes surfaced next to Calendario
+
+**Not yet built from the original scope:** linking a real session to a plan slot from the session-detail page (the `linkSessionToPlan` action exists; no UI trigger yet), and the "session report summary" (one-tap post-session summary of blocks covered).
 
 ### Phase 4C — Playtomic Integration
 
@@ -133,6 +139,8 @@ Import bookings from Playtomic-enabled clubs directly into the pctmt calendar.
 - `raw_payload JSONB` in `playtomic_bookings` preserves full API response, protecting against schema changes on Playtomic's side
 
 **Upcoming Playtomic API features to incorporate when available:** player data endpoints, payment history, event and clinic data.
+
+**Status:** Schema migration applied (`playtomic_connections`, `playtomic_bookings`). Server Actions, cron route handler, and UI not yet built.
 
 ### Phase 5 — Monetization + Retention
 
@@ -172,4 +180,4 @@ To be refined based on real coach feedback from Phases 4A–4C. This phase turns
 
 A coach subscribes because the tool makes them look professional in front of their players. The specific moment: coach pulls out their phone mid-session, opens the shared player profile for María, and shows her the progress chart — endurance up 18 points over 4 months, attendance at 92%, semifinal at the last tournament. María sees her own trajectory. The coach's value is visible. That justifies both the coaching fee and the pctmt subscription.
 
-Everything in the roadmap either enables that moment or makes it happen faster.
+This moment is now fully live in production. Everything in the remaining roadmap either enables it further or makes it happen faster.
