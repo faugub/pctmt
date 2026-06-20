@@ -102,12 +102,20 @@ If `.env.local` is lost, recreate it from the Supabase dashboard under **Setting
 
 Same two variables set in **Vercel → Project Settings → Environment Variables** (Production + Preview + Development).
 
-When Phase 4C (Playtomic) is implemented, add:
+**Not yet set — needed when Phase 4C (Playtomic) sync logic is built:**
 
 ```
 PLAYTOMIC_ENCRYPTION_KEY=<random-32-byte-hex>   # for encrypting client_secret in DB
 CRON_SECRET=<random-string>                      # validates Vercel Cron calls to /api/playtomic/sync
 ```
+
+**Also missing — used by `SharePanel.tsx` today as a hardcoded fallback:**
+
+```
+NEXT_PUBLIC_SITE_URL=https://pctmt-azure.vercel.app
+```
+
+`src/components/ui/SharePanel.tsx` currently hardcodes `https://pctmt-azure.vercel.app` directly in the component (see the `SITE_URL` constant with a `TODO` comment). Move this to an env var before the domain changes, or the shared links will silently point to the wrong place.
 
 ### Auth settings
 
@@ -129,17 +137,17 @@ CRON_SECRET=<random-string>                      # validates Vercel Cron calls t
 | File | Phase | Status |
 |---|---|---|
 | `20260611000001_initial_schema.sql` | Phases 1–3 | ✅ Applied 2026-06-15 |
-| `20260615000002_phase4a_calendar_blocks.sql` | Phase 4A | ⏳ Pending |
-| `20260615000003_phase4b_plans_sharing.sql` | Phase 4B | ⏳ Pending |
-| `20260615000004_phase4c_playtomic.sql` | Phase 4C | ⏳ Pending |
+| `20260615000002_phase4a_calendar_blocks.sql` | Phase 4A | ✅ Applied 2026-06-20 |
+| `20260615000003_phase4b_plans_sharing.sql` | Phase 4B | ✅ Applied 2026-06-20 |
+| `20260615000004_phase4c_playtomic.sql` | Phase 4C | ✅ Applied 2026-06-20 (schema only — no sync code uses these tables yet) |
 
-Always apply migrations in order. Never skip a file.
+Always apply migrations in order. Never skip a file. All four are currently applied in production.
 
 ---
 
-## Vercel Cron (Phase 4C — Playtomic sync)
+## Vercel Cron (Phase 4C — Playtomic sync) — not yet built
 
-Configured in `vercel.json` at the project root:
+This section describes the planned setup. None of it exists in the repo yet — `vercel.json`, the route handler, and the env vars above are all still to be created.
 
 ```json
 {
@@ -152,9 +160,9 @@ Configured in `vercel.json` at the project root:
 }
 ```
 
-The cron runs every hour on the hour. The route handler at `src/app/api/playtomic/sync/route.ts` validates the `Authorization: Bearer $CRON_SECRET` header before processing — this prevents unauthorized calls to the endpoint.
+The cron would run every hour on the hour. The route handler at `src/app/api/playtomic/sync/route.ts` would validate an `Authorization: Bearer $CRON_SECRET` header before processing.
 
-To test the sync manually during development:
+To test manually once built:
 
 ```bash
 curl -X POST http://localhost:3000/api/playtomic/sync \
@@ -170,35 +178,39 @@ pctmt/
 ├── docs/
 │   ├── runbook.md           # This file — operational reference
 │   ├── architecture.md      # Stack, schema, patterns, decisions
-│   └── product.md           # Vision, roadmap, pricing
+│   ├── product.md           # Vision, roadmap, pricing
+│   └── qa-runbook.md        # End-to-end manual QA script
 ├── public/
 ├── supabase/
 │   └── migrations/
 │       ├── 20260611000001_initial_schema.sql           # ✅ applied
-│       ├── 20260615000002_phase4a_calendar_blocks.sql  # ⏳ pending
-│       ├── 20260615000003_phase4b_plans_sharing.sql    # ⏳ pending
-│       └── 20260615000004_phase4c_playtomic.sql        # ⏳ pending
+│       ├── 20260615000002_phase4a_calendar_blocks.sql  # ✅ applied
+│       ├── 20260615000003_phase4b_plans_sharing.sql    # ✅ applied
+│       └── 20260615000004_phase4c_playtomic.sql        # ✅ applied (schema only)
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/
 │   │   │   ├── login/           # ✅
 │   │   │   └── register/        # ✅
 │   │   ├── (dashboard)/
-│   │   │   ├── dashboard/       # Stats, chart, recent activity ✅
-│   │   │   ├── players/         # CRUD + snapshots + attendance history ✅
+│   │   │   ├── dashboard/       # Stats, chart, recent activity, Calendar/Planes entry points ✅
+│   │   │   ├── players/         # CRUD + snapshots + attendance history + SharePanel ✅
 │   │   │   ├── sessions/        # CRUD + attendance toggle ✅
 │   │   │   ├── tournaments/     # CRUD + results per player ✅
 │   │   │   ├── strategies/      # CRUD + zone filter + tags ✅
-│   │   │   ├── calendar/        # Weekly view + series management ⏳ Phase 4A
-│   │   │   ├── blocks/          # Training block library ⏳ Phase 4A
-│   │   │   ├── plans/           # Training plans + phase timeline ⏳ Phase 4B
-│   │   │   └── settings/        # Integrations (Playtomic connect) ⏳ Phase 4C
+│   │   │   ├── calendar/        # Weekly 7-column view + series list ✅
+│   │   │   ├── blocks/          # Training block library, CRUD + type filter ✅
+│   │   │   ├── series/
+│   │   │   │   ├── new/         # Create recurring series ✅
+│   │   │   │   └── [id]/edit/   # Scoped edit (this/future/all) ✅
+│   │   │   ├── plans/           # List, create, detail with phases + timeline ✅
+│   │   │   └── settings/        # Integrations (Playtomic connect) — ⏳ not built (Phase 4C)
 │   │   ├── share/
-│   │   │   └── player/[token]/  # Public player profile (no auth) ⏳ Phase 4B
+│   │   │   └── player/[token]/  # Public player profile, no auth ✅
 │   │   ├── api/
-│   │   │   └── playtomic/
-│   │   │       ├── sync/        # Vercel Cron handler ⏳ Phase 4C
-│   │   │       └── connect/     # Save + validate credentials ⏳ Phase 4C
+│   │   │   └── playtomic/       # ⏳ not built (Phase 4C)
+│   │   │       ├── sync/
+│   │   │       └── connect/
 │   │   ├── actions/
 │   │   │   ├── auth.ts          # login, register, logout ✅
 │   │   │   ├── players.ts       # create, update, delete ✅
@@ -206,11 +218,10 @@ pctmt/
 │   │   │   ├── sessions.ts      # create, update, attendance, delete ✅
 │   │   │   ├── tournaments.ts   # create, update, results, delete ✅
 │   │   │   ├── strategies.ts    # create, update, delete ✅
-│   │   │   ├── series.ts        # create, update, delete, generate ⏳ Phase 4A
-│   │   │   ├── blocks.ts        # create, update, delete ⏳ Phase 4A
-│   │   │   ├── sessionBlocks.ts # add, reorder, remove ⏳ Phase 4A
-│   │   │   ├── plans.ts         # create, update, delete, link ⏳ Phase 4B
-│   │   │   └── sharing.ts       # enable, disable, regenerate token ⏳ Phase 4B
+│   │   │   ├── blocks.ts        # create, update, delete ✅
+│   │   │   ├── series.ts        # createSeries, generateSessionsForSeries, updateSeries, updateSingleSessionInSeries, deleteSeries ✅
+│   │   │   ├── plans.ts         # createPlan, updatePlan, deletePlan, addPhase, deletePhase, updatePlanSession, linkSessionToPlan, markPlanSessionSkipped ✅
+│   │   │   └── sharing.ts       # enablePlayerShare, disablePlayerShare, regenerateShareToken ✅
 │   │   ├── globals.css
 │   │   ├── layout.tsx
 │   │   └── page.tsx
@@ -230,19 +241,21 @@ pctmt/
 │   │       ├── StrategyForm.tsx
 │   │       ├── DeleteStrategyButton.tsx
 │   │       ├── ProgressChart.tsx
-│   │       ├── WeeklyCalendar.tsx    # ⏳ Phase 4A
-│   │       ├── SeriesForm.tsx        # ⏳ Phase 4A
-│   │       ├── BlockLibraryPanel.tsx # ⏳ Phase 4A
-│   │       ├── SessionBlockList.tsx  # ⏳ Phase 4A
-│   │       ├── PlanTimeline.tsx      # ⏳ Phase 4B
-│   │       └── PlaytomicBadge.tsx    # ⏳ Phase 4C
+│   │       ├── BlockForm.tsx          # ✅
+│   │       ├── DeleteBlockButton.tsx  # ✅
+│   │       ├── SeriesForm.tsx         # ✅ — supports extraActions for scoped edits
+│   │       ├── DeleteSeriesButton.tsx # ✅
+│   │       ├── PlanForm.tsx           # ✅ — group/individual target toggle
+│   │       ├── AddPhaseForm.tsx       # ✅ — collapsible inline form
+│   │       ├── DeletePlanButton.tsx   # ✅
+│   │       └── SharePanel.tsx         # ✅ — toggle, copy link, regenerate token
 │   ├── lib/
 │   │   └── supabase/
 │   │       ├── client.ts
 │   │       ├── server.ts
-│   │       └── middleware.ts
+│   │       └── middleware.ts          # public routes: /login, /register, /share
 │   └── middleware.ts
-├── vercel.json              # Cron config (Phase 4C)
+├── vercel.json              # ⏳ not yet created (needed for Phase 4C cron)
 ├── .env.local               # NOT in git
 └── package.json
 ```
@@ -252,3 +265,13 @@ pctmt/
 ## Known Warnings
 
 **`middleware.ts` deprecation warning** — Next.js 16 recommends renaming `middleware.ts` to `proxy.ts`. This is a warning only; the app builds and runs correctly. Will be resolved in a future chore commit.
+
+## Known Gaps (tracked, not yet fixed)
+
+These are real gaps found during the Phase 4A/4B build that don't block usage today but are worth closing soon:
+
+- **No UI to attach training blocks to a session.** The `session_blocks` table and RLS exist; there's no panel on the session-detail page to add/reorder blocks yet.
+- **No UI to link a real session to a plan slot.** `linkSessionToPlan()` exists as a Server Action but nothing calls it — a coach can't yet mark "session #3 of this plan = this real session" from the UI.
+- **`SharePanel.tsx` hardcodes the production URL** instead of reading an env var (see Vercel environment variables section above).
+- **Playtomic tables have no sync logic.** Schema is applied; everything else in Phase 4C is unbuilt.
+- **`players` has no `email` column**, which Phase 4C's player-matching-by-email design assumes. Will need a small migration when that phase starts.
