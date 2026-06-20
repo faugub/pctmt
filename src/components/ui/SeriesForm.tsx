@@ -32,18 +32,22 @@ type DefaultValues = {
   notes?: string | null
 }
 
+type ExtraAction = { label: string; action: (formData: FormData) => Promise<void> }
+
 export function SeriesForm({
   action,
   players,
   defaultValues = {},
   submitLabel = 'Crear serie',
   showStartsOn = true,
+  extraActions = [],
 }: {
   action: (formData: FormData) => Promise<void>
   players: Player[]
   defaultValues?: DefaultValues
   submitLabel?: string
   showStartsOn?: boolean
+  extraActions?: ExtraAction[]
 }) {
   const selectedDays = new Set(defaultValues.recurrence_days ?? [])
   const selectedPlayers = new Set(defaultValues.player_ids ?? [])
@@ -222,6 +226,21 @@ export function SeriesForm({
           {submitLabel}
         </button>
       </div>
+
+      {extraActions.length > 0 && (
+        <div className="pt-1 space-y-2">
+          {extraActions.map((ea) => (
+            <button
+              key={ea.label}
+              type="submit"
+              formAction={ea.action}
+              className="w-full py-2 text-sm bg-white border border-amber-200 rounded-lg text-amber-800 hover:bg-amber-50 transition-colors"
+            >
+              {ea.label}
+            </button>
+          ))}
+        </div>
+      )}
     </form>
   )
 }
