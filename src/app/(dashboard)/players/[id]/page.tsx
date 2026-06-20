@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { DeletePlayerButton } from '@/components/ui/DeletePlayerButton'
 import { DeleteSnapshotButton } from '@/components/ui/DeleteSnapshotButton'
 import { ProgressChart } from '@/components/ui/ProgressChart'
+import { SharePanel } from '@/components/ui/SharePanel'
 
 const LEVEL_LABEL: Record<string, string> = {
   beginner: 'Iniciación',
@@ -159,6 +160,13 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             <ProgressChart snapshots={chartSnapshots} playerName={player.full_name} />
           </div>
         )}
+
+        {/* Shareable profile */}
+        <SharePanel
+          playerId={id}
+          shareEnabled={player.share_enabled}
+          shareToken={player.share_token}
+        />
 
         {/* Snapshots */}
         <div>
