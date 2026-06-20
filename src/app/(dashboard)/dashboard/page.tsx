@@ -121,6 +121,21 @@ export default async function DashboardPage() {
           </p>
         </div>
 
+        {/* Calendar — primary entry point to the coach's week */}
+        <Link
+          href="/calendar"
+          className="flex items-center justify-between px-6 py-5 bg-gray-900 text-white rounded-2xl shadow-sm hover:bg-gray-800 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">📅</span>
+            <div>
+              <p className="text-sm font-semibold">Calendario</p>
+              <p className="text-xs text-gray-300">Ver la semana, gestionar series recurrentes</p>
+            </div>
+          </div>
+          <span className="text-gray-400 text-lg">›</span>
+        </Link>
+
         {/* Stats grid */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
           {stats.map(({ label, value, href, emoji }) => (
