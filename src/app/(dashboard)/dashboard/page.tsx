@@ -42,12 +42,13 @@ export default async function DashboardPage() {
   const displayName = coach?.full_name ?? user.email
 
   // Counts
-  const [playerCount, sessionCount, tournamentCount, strategyCount, blockCount] = await Promise.all([
+  const [playerCount, sessionCount, tournamentCount, strategyCount, blockCount, boardCount] = await Promise.all([
     supabase.from('players').select('id', { count: 'exact', head: true }),
     supabase.from('sessions').select('id', { count: 'exact', head: true }),
     supabase.from('tournaments').select('id', { count: 'exact', head: true }),
     supabase.from('strategies').select('id', { count: 'exact', head: true }),
     supabase.from('training_blocks').select('id', { count: 'exact', head: true }),
+    supabase.from('tactic_boards').select('id', { count: 'exact', head: true }),
   ])
 
   // Recent sessions (last 3)
@@ -95,6 +96,7 @@ export default async function DashboardPage() {
     { label: 'Torneos',     value: tournamentCount.count ?? 0, href: '/tournaments', emoji: '🏆' },
     { label: 'Estrategias', value: strategyCount.count ?? 0,   href: '/strategies',  emoji: '🧠' },
     { label: 'Bloques',     value: blockCount.count ?? 0,      href: '/blocks',      emoji: '🏃' },
+    { label: 'Pizarras',    value: boardCount.count ?? 0,      href: '/boards',      emoji: '🖊️' },
   ]
 
   return (
@@ -152,7 +154,7 @@ export default async function DashboardPage() {
         </div>
 
         {/* Stats grid */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-5">
+        <div className="grid grid-cols-3 gap-4 sm:grid-cols-6">
           {stats.map(({ label, value, href, emoji }) => (
             <Link
               key={href}
