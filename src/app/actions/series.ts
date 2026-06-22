@@ -245,14 +245,29 @@ export async function updateSeries(
   redirect('/calendar')
 }
 
-export async function deleteSeries(id: string) {
+/**
+ * Deletes a series template. By default (cascade = false) any sessions
+ * already generated from it are left behind as one-off sessions, since
+ * ON DELETE SET NULL on sessions.series_id detaches them automatically —
+ * this preserves history (attendance, notes) for classes that already
+ * happened. Pass cascade = true to also delete every generated session,
+ * including its history, when the coach wants the whole series gone.
+ */
+export async function deleteSeries(id: string, cascade: boolean) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // ON DELETE SET NULL on sessions.series_id means existing sessions survive
-  // as one-off sessions rather than disappearing. Delete them explicitly if
-  // the coach wants the whole series gone, including its history.
+  if (cascade) {
+    const { error: sessionsError } = await supabase
+      .from('sessions')
+      .delete()
+      .eq('series_id', id)
+      .eq('coach_id', user.id)
+
+    if (sessionsError) throw new Error(sessionsError.message)
+  }
+
   const { error } = await supabase
     .from('session_series')
     .delete()
@@ -260,6 +275,89 @@ export async function deleteSeries(id: string) {
     .eq('coach_id', user.id)
 
   if (error) throw new Error(error.message)
+
+  redirect('/calendar')
+}
+
+type DeleteScope = 'this' | 'future' | 'all'
+
+/**
+ * Deletes a session that may belong to a series, with the same "this /
+ * future / all" scoping the coach already has for edits:
+ * - 'this'   → deletes only this one session. Works the same whether or
+ *              not it belongs to a series.
+ * - 'future' → deletes this occurrence and every later one in the series,
+ *              then caps the series' ends_on the day before this date so
+ *              a future edit doesn't regenerate the ones we just removed.
+ *              Past occurrences (and their attendance history) are kept.
+ * - 'all'    → deletes the entire series, including every past and future
+ *              session generated from it.
+ * For a session with no series_id, every scope behaves like 'this'.
+ */
+export async function deleteSeriesOccurrence(sessionId: string, scope: DeleteScope) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { data: session, error: sessionError } = await supabase
+    .from('sessions')
+    .select('id, series_id, series_index, session_date')
+    .eq('id', sessionId)
+    .eq('coach_id', user.id)
+    .single()
+
+  if (sessionError || !session) throw new Error(sessionError?.message ?? 'Session not found')
+
+  if (!session.series_id || scope === 'this') {
+    const { error } = await supabase
+      .from('sessions')
+      .delete()
+      .eq('id', sessionId)
+      .eq('coach_id', user.id)
+
+    if (error) throw new Error(error.message)
+    redirect('/calendar')
+  }
+
+  if (scope === 'all') {
+    const { error: sessionsError } = await supabase
+      .from('sessions')
+      .delete()
+      .eq('series_id', session.series_id)
+      .eq('coach_id', user.id)
+
+    if (sessionsError) throw new Error(sessionsError.message)
+
+    const { error: seriesErr } = await supabase
+      .from('session_series')
+      .delete()
+      .eq('id', session.series_id)
+      .eq('coach_id', user.id)
+
+    if (seriesErr) throw new Error(seriesErr.message)
+    redirect('/calendar')
+  }
+
+  // scope === 'future': remove this occurrence and everything after it.
+  const { error: deleteError } = await supabase
+    .from('sessions')
+    .delete()
+    .eq('series_id', session.series_id)
+    .eq('coach_id', user.id)
+    .gte('series_index', session.series_index)
+
+  if (deleteError) throw new Error(deleteError.message)
+
+  const dayBefore = new Date(session.session_date + 'T00:00:00Z')
+  dayBefore.setUTCDate(dayBefore.getUTCDate() - 1)
+
+  const { error: capError } = await supabase
+    .from('session_series')
+    .update({ ends_on: toDateOnly(dayBefore) })
+    .eq('id', session.series_id)
+    .eq('coach_id', user.id)
+
+  if (capError) throw new Error(capError.message)
 
   redirect('/calendar')
 }
