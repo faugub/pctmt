@@ -2,7 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { logout } from '@/app/actions/auth'
-import { ProgressChart } from '@/components/ui/ProgressChart'
+import { CoachHoursChart } from '@/components/ui/CoachHoursChart'
 
 const TYPE_LABEL: Record<string, string> = {
   technical: 'Técnica',
@@ -18,17 +18,17 @@ function formatDate(dateStr: string) {
   })
 }
 
-type LatestSnapshotRow = {
-  player_id: string
-  players: { full_name: string } | null
+function toDateOnly(d: Date): string {
+  return d.toISOString().split('T')[0]
 }
 
-type SnapshotRow = {
-  recorded_at: string
-  endurance_score: number | null
-  speed_score: number | null
-  strength_score: number | null
-  technique_score: number | null
+function monthKey(d: Date) {
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}`
+}
+
+function monthLabel(d: Date) {
+  const label = d.toLocaleDateString('es-ES', { month: 'short' })
+  return label.charAt(0).toUpperCase() + label.slice(1).replace('.', '')
 }
 
 export default async function DashboardPage() {
@@ -67,28 +67,40 @@ export default async function DashboardPage() {
     .order('start_date', { ascending: true })
     .limit(3)
 
-  // Progress chart: player with most recent snapshot
-  const { data: latestSnapshot } = await supabase
-    .from('player_snapshots')
-    .select('player_id, players(full_name)')
-    .order('recorded_at', { ascending: false })
-    .limit(1)
-    .single() as { data: LatestSnapshotRow | null }
+  // Coach utilization — hours coached per month, last 6 months.
+  // This is the metric that actually matters to a coach's income, unlike
+  // "progress of whichever player was opened last" which told them nothing.
+  const now = new Date()
+  const rangeStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 5, 1))
 
-  let chartSnapshots: SnapshotRow[] = []
-  let chartPlayerName = ''
+  const { data: hourSessions } = await supabase
+    .from('sessions')
+    .select('session_date, duration_min')
+    .gte('session_date', toDateOnly(rangeStart))
 
-  if (latestSnapshot?.player_id) {
-    chartPlayerName = latestSnapshot.players?.full_name ?? ''
-
-    const { data: snaps } = await supabase
-      .from('player_snapshots')
-      .select('recorded_at, endurance_score, speed_score, strength_score, technique_score')
-      .eq('player_id', latestSnapshot.player_id)
-      .order('recorded_at', { ascending: true }) as { data: SnapshotRow[] | null }
-
-    chartSnapshots = snaps ?? []
+  const minutesByMonth = new Map<string, number>()
+  for (const s of hourSessions ?? []) {
+    const d = new Date(s.session_date + 'T00:00:00Z')
+    const key = monthKey(d)
+    minutesByMonth.set(key, (minutesByMonth.get(key) ?? 0) + (s.duration_min ?? 0))
   }
+
+  const months = Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - (5 - i), 1))
+    return { key: monthKey(d), label: monthLabel(d) }
+  })
+
+  const hoursData = months.map((m) => ({
+    month: m.label,
+    hours: Math.round(((minutesByMonth.get(m.key) ?? 0) / 60) * 10) / 10,
+  }))
+
+  const currentMonthHours = hoursData[hoursData.length - 1]?.hours ?? 0
+  const previousMonthHours = hoursData[hoursData.length - 2]?.hours ?? 0
+  const deltaPct = previousMonthHours > 0
+    ? Math.round(((currentMonthHours - previousMonthHours) / previousMonthHours) * 100)
+    : null
+  const hasAnyHours = hoursData.some((m) => m.hours > 0)
 
   const stats = [
     { label: 'Jugadores',   value: playerCount.count ?? 0,     href: '/players',     emoji: '🎾' },
@@ -168,13 +180,32 @@ export default async function DashboardPage() {
           ))}
         </div>
 
-        {/* Progress chart */}
-        {chartSnapshots.length >= 2 && (
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm px-6 py-5">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Progreso de jugadores</h2>
-            <ProgressChart snapshots={chartSnapshots} playerName={chartPlayerName} />
+        {/* Coach utilization */}
+        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm px-6 py-5">
+          <div className="flex items-center justify-between mb-1">
+            <h2 className="text-base font-semibold text-gray-900">Horas de coaching</h2>
+            <span className="text-xs text-gray-400">Últimos 6 meses</span>
           </div>
-        )}
+
+          {hasAnyHours ? (
+            <>
+              <div className="flex items-baseline gap-2 mb-2 flex-wrap">
+                <span className="text-3xl font-bold text-gray-900">{currentMonthHours}h</span>
+                <span className="text-sm text-gray-400">este mes</span>
+                {deltaPct !== null && (
+                  <span className={`text-sm font-medium ${deltaPct >= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                    {deltaPct >= 0 ? '+' : ''}{deltaPct}% vs mes pasado
+                  </span>
+                )}
+              </div>
+              <CoachHoursChart data={hoursData} />
+            </>
+          ) : (
+            <p className="text-sm text-gray-400 py-8 text-center">
+              Aún no registras horas dadas. Se calculan a partir de la duración de tus sesiones.
+            </p>
+          )}
+        </div>
 
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
 
