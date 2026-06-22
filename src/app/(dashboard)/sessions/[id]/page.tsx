@@ -118,7 +118,7 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
 
         {/* Delete */}
         <div className="pt-2">
-          <DeleteSessionButton id={id} title={session.title} />
+          <DeleteSessionButton id={id} title={session.title} seriesId={session.series_id} />
         </div>
 
       </main>
