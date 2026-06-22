@@ -36,27 +36,87 @@ function formatRange(start: Date, end: Date): string {
   return `${fmt(start)} – ${fmt(end)}`
 }
 
+/** First day of the month containing the given date (UTC-safe). */
+function startOfMonth(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1))
+}
+
+/** Last day of the month containing the given date (UTC-safe). */
+function endOfMonth(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 1, 0))
+}
+
+function formatMonthLabel(date: Date): string {
+  const label = date.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' })
+  return label.charAt(0).toUpperCase() + label.slice(1)
+}
+
+type SeriesInfo = { start_time: string; session_type: string } | null
+type SessionRow = {
+  id: string
+  title: string
+  session_date: string
+  session_type: string | null
+  duration_min: number | null
+  series_id: string | null
+  session_series: SeriesInfo
+}
+
 export default async function CalendarPage({
   searchParams,
 }: {
-  searchParams: Promise<{ week?: string }>
+  searchParams: Promise<{ view?: string; week?: string; month?: string }>
 }) {
-  const { week } = await searchParams
+  const { view: viewParam, week, month } = await searchParams
+  const view = viewParam === 'month' ? 'month' : 'week'
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const anchorDate = week ? new Date(week + 'T00:00:00Z') : new Date()
-  const weekStart = startOfWeek(anchorDate)
-  const weekEnd = addDays(weekStart, 6)
+  const todayParam = toDateOnly(new Date())
 
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
+  // ---- Range + nav params depend on the active view ----
+  let rangeStart: Date
+  let rangeEnd: Date
+  let prevParam: string
+  let nextParam: string
+  let todayHref: string
+  let headerLabel: string
+
+  if (view === 'month') {
+    const anchorDate = month ? new Date(month + 'T00:00:00Z') : new Date()
+    const monthStart = startOfMonth(anchorDate)
+    const monthEnd = endOfMonth(anchorDate)
+    rangeStart = startOfWeek(monthStart)
+    rangeEnd = addDays(startOfWeek(monthEnd), 6)
+
+    const prevMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() - 1, 1))
+    const nextMonth = new Date(Date.UTC(monthStart.getUTCFullYear(), monthStart.getUTCMonth() + 1, 1))
+    prevParam = toDateOnly(prevMonth)
+    nextParam = toDateOnly(nextMonth)
+    todayHref = `/calendar?view=month&month=${toDateOnly(startOfMonth(new Date()))}`
+    headerLabel = formatMonthLabel(monthStart)
+  } else {
+    const anchorDate = week ? new Date(week + 'T00:00:00Z') : new Date()
+    rangeStart = startOfWeek(anchorDate)
+    rangeEnd = addDays(rangeStart, 6)
+    prevParam = toDateOnly(addDays(rangeStart, -7))
+    nextParam = toDateOnly(addDays(rangeStart, 7))
+    todayHref = `/calendar?view=week&week=${todayParam}`
+    headerLabel = formatRange(rangeStart, rangeEnd)
+  }
+
+  const days = Array.from(
+    { length: Math.round((rangeEnd.getTime() - rangeStart.getTime()) / 86400000) + 1 },
+    (_, i) => addDays(rangeStart, i)
+  )
 
   const { data: sessions, error } = await supabase
     .from('sessions')
     .select('id, title, session_date, session_type, duration_min, series_id, session_series(start_time, session_type)')
-    .gte('session_date', toDateOnly(weekStart))
-    .lte('session_date', toDateOnly(weekEnd))
+    .gte('session_date', toDateOnly(rangeStart))
+    .lte('session_date', toDateOnly(rangeEnd))
     .order('session_date', { ascending: true })
 
   if (error) throw new Error(error.message)
@@ -66,17 +126,6 @@ export default async function CalendarPage({
     .select('id, title, session_type')
     .order('title', { ascending: true })
 
-  type SeriesInfo = { start_time: string; session_type: string } | null
-  type SessionRow = {
-    id: string
-    title: string
-    session_date: string
-    session_type: string | null
-    duration_min: number | null
-    series_id: string | null
-    session_series: SeriesInfo
-  }
-
   const sessionsByDate = new Map<string, SessionRow[]>()
   for (const s of (sessions ?? []) as unknown as SessionRow[]) {
     const list = sessionsByDate.get(s.session_date) ?? []
@@ -84,9 +133,12 @@ export default async function CalendarPage({
     sessionsByDate.set(s.session_date, list)
   }
 
-  const prevWeekParam = toDateOnly(addDays(weekStart, -7))
-  const nextWeekParam = toDateOnly(addDays(weekStart, 7))
-  const todayParam = toDateOnly(new Date())
+  const prevHref = view === 'month' ? `/calendar?view=month&month=${prevParam}` : `/calendar?view=week&week=${prevParam}`
+  const nextHref = view === 'month' ? `/calendar?view=month&month=${nextParam}` : `/calendar?view=week&week=${nextParam}`
+
+  const currentMonthIndex = view === 'month'
+    ? (month ? new Date(month + 'T00:00:00Z') : new Date()).getUTCMonth()
+    : null
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -103,73 +155,139 @@ export default async function CalendarPage({
         <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
           <div>
             <h1 className="text-2xl font-semibold text-gray-900">Calendario</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{formatRange(weekStart, weekEnd)}</p>
+            <p className="text-sm text-gray-500 mt-0.5">{headerLabel}</p>
           </div>
-          <div className="flex items-center gap-2">
-            <Link
-              href={`/calendar?week=${prevWeekParam}`}
-              className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-gray-400 transition-colors"
-            >
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* View toggle */}
+            <div className="flex items-center bg-white border border-gray-200 rounded-lg p-0.5">
+              <Link
+                href={`/calendar?view=week&week=${view === 'week' ? toDateOnly(rangeStart) : todayParam}`}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  view === 'week' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Semana
+              </Link>
+              <Link
+                href={`/calendar?view=month&month=${view === 'month' ? toDateOnly(startOfMonth(rangeStart)) : toDateOnly(startOfMonth(new Date()))}`}
+                className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
+                  view === 'month' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:text-gray-900'
+                }`}
+              >
+                Mes
+              </Link>
+            </div>
+
+            <Link href={prevHref} className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-gray-400 transition-colors">
               ‹ Anterior
             </Link>
-            <Link
-              href={`/calendar?week=${todayParam}`}
-              className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-gray-400 transition-colors"
-            >
+            <Link href={todayHref} className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-gray-400 transition-colors">
               Hoy
             </Link>
-            <Link
-              href={`/calendar?week=${nextWeekParam}`}
-              className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-gray-400 transition-colors"
-            >
+            <Link href={nextHref} className="px-3 py-2 text-sm bg-white border border-gray-200 rounded-lg text-gray-600 hover:border-gray-400 transition-colors">
               Siguiente ›
             </Link>
-            <Link
-              href="/series/new"
-              className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-            >
+            <Link href="/series/new" className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors">
               + Nueva serie
             </Link>
           </div>
         </div>
 
-        {/* Weekly grid */}
-        <div className="grid grid-cols-7 gap-2 mb-10">
-          {days.map((day, i) => {
-            const dateKey = toDateOnly(day)
-            const isToday = dateKey === todayParam
-            const daySessions = sessionsByDate.get(dateKey) ?? []
+        {view === 'week' ? (
+          /* ---- Weekly grid ---- */
+          <div className="grid grid-cols-7 gap-2 mb-10">
+            {days.map((day) => {
+              const dateKey = toDateOnly(day)
+              const isToday = dateKey === todayParam
+              const daySessions = sessionsByDate.get(dateKey) ?? []
 
-            return (
-              <div key={dateKey} className="flex flex-col">
-                <div className={`text-center pb-2 mb-2 border-b ${isToday ? 'border-gray-900' : 'border-gray-200'}`}>
-                  <p className="text-xs text-gray-400">{WEEKDAY_LABELS[day.getUTCDay()]}</p>
-                  <p className={`text-sm font-semibold ${isToday ? 'text-gray-900' : 'text-gray-600'}`}>
-                    {day.getUTCDate()}
-                  </p>
+              return (
+                <div key={dateKey} className="flex flex-col">
+                  <div className={`text-center pb-2 mb-2 border-b ${isToday ? 'border-gray-900' : 'border-gray-200'}`}>
+                    <p className="text-xs text-gray-400">{WEEKDAY_LABELS[day.getUTCDay()]}</p>
+                    <p className={`text-sm font-semibold ${isToday ? 'text-gray-900' : 'text-gray-600'}`}>
+                      {day.getUTCDate()}
+                    </p>
+                  </div>
+                  <div className="flex flex-col gap-1.5 min-h-[120px]">
+                    {daySessions.map((s) => {
+                      const colorType = s.session_series?.session_type
+                      const colorClass = (colorType && TYPE_COLOR[colorType]) ?? DEFAULT_COLOR
+                      return (
+                        <Link
+                          key={s.id}
+                          href={`/sessions/${s.id}`}
+                          className={`px-2 py-1.5 rounded-lg border text-xs leading-tight hover:shadow-sm transition-shadow ${colorClass}`}
+                        >
+                          {s.session_series?.start_time && (
+                            <p className="font-medium">{s.session_series.start_time.slice(0, 5)}</p>
+                          )}
+                          <p className="truncate">{s.title}</p>
+                        </Link>
+                      )
+                    })}
+                  </div>
                 </div>
-                <div className="flex flex-col gap-1.5 min-h-[120px]">
-                  {daySessions.map((s) => {
-                    const colorType = s.session_series?.session_type
-                    const colorClass = (colorType && TYPE_COLOR[colorType]) ?? DEFAULT_COLOR
-                    return (
-                      <Link
-                        key={s.id}
-                        href={`/sessions/${s.id}`}
-                        className={`px-2 py-1.5 rounded-lg border text-xs leading-tight hover:shadow-sm transition-shadow ${colorClass}`}
-                      >
-                        {s.session_series?.start_time && (
-                          <p className="font-medium">{s.session_series.start_time.slice(0, 5)}</p>
-                        )}
-                        <p className="truncate">{s.title}</p>
-                      </Link>
-                    )
-                  })}
+              )
+            })}
+          </div>
+        ) : (
+          /* ---- Monthly grid ---- */
+          <div className="mb-10">
+            <div className="grid grid-cols-7 gap-px mb-1">
+              {WEEKDAY_LABELS.slice(1).concat(WEEKDAY_LABELS[0]).map((label) => (
+                <div key={label} className="text-center text-xs text-gray-400 pb-2">
+                  {label}
                 </div>
-              </div>
-            )
-          })}
-        </div>
+              ))}
+            </div>
+            <div className="grid grid-cols-7 gap-px bg-gray-200 rounded-xl overflow-hidden border border-gray-200">
+              {days.map((day) => {
+                const dateKey = toDateOnly(day)
+                const isToday = dateKey === todayParam
+                const isCurrentMonth = day.getUTCMonth() === currentMonthIndex
+                const daySessions = sessionsByDate.get(dateKey) ?? []
+                const visibleSessions = daySessions.slice(0, 3)
+                const extraCount = daySessions.length - visibleSessions.length
+
+                return (
+                  <Link
+                    key={dateKey}
+                    href={`/calendar?view=week&week=${toDateOnly(startOfWeek(day))}`}
+                    className={`bg-white min-h-[92px] p-1.5 flex flex-col gap-1 hover:bg-gray-50 transition-colors ${
+                      isCurrentMonth ? '' : 'opacity-40'
+                    }`}
+                  >
+                    <span
+                      className={`text-xs font-medium inline-flex items-center justify-center w-5 h-5 rounded-full ${
+                        isToday ? 'bg-gray-900 text-white' : 'text-gray-500'
+                      }`}
+                    >
+                      {day.getUTCDate()}
+                    </span>
+                    <div className="flex flex-col gap-0.5">
+                      {visibleSessions.map((s) => {
+                        const colorType = s.session_series?.session_type
+                        const colorClass = (colorType && TYPE_COLOR[colorType]) ?? DEFAULT_COLOR
+                        return (
+                          <span
+                            key={s.id}
+                            className={`px-1.5 py-0.5 rounded border text-[10px] leading-tight truncate ${colorClass}`}
+                          >
+                            {s.title}
+                          </span>
+                        )
+                      })}
+                      {extraCount > 0 && (
+                        <span className="text-[10px] text-gray-400 px-1.5">+{extraCount} más</span>
+                      )}
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Series list */}
         <div>
