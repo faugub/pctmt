@@ -12,6 +12,13 @@ const COURT_Y = 20
 const COURT_W = 180
 const COURT_H = 360
 
+// FIP: the service line sits 3.05m from the back wall (= 6.95m from the
+// net). At 18px/m that's ~54.9px — kept as its own constant since it's
+// easy to misplace (it looks similar in magnitude to "3m from net", which
+// is wrong: the deep zone is between the net and the service line, not
+// between the service line and the wall).
+const SERVICE_LINE_DEPTH = 54.9
+
 const TEAM_COLOR: Record<BoardToken['team'], string> = {
   own: '#2563eb',
   rival: '#dc2626',
@@ -275,22 +282,26 @@ export function TacticBoardEditor({
             stroke="#0f172a" strokeWidth={3}
           />
 
-          {/* Service lines (3m from net) */}
+          {/* Service lines — FIP regulation: 3.05m from the back wall
+              (equivalently 6.95m from the net). The service box is the
+              deep zone close to the net; only a thin strip is left
+              between the service line and the back wall. */}
           <line
-            x1={COURT_X} y1={COURT_Y + COURT_H / 2 - 54}
-            x2={COURT_X + COURT_W} y2={COURT_Y + COURT_H / 2 - 54}
+            x1={COURT_X} y1={COURT_Y + SERVICE_LINE_DEPTH}
+            x2={COURT_X + COURT_W} y2={COURT_Y + SERVICE_LINE_DEPTH}
             stroke="white" strokeOpacity={0.6} strokeWidth={1.5}
           />
           <line
-            x1={COURT_X} y1={COURT_Y + COURT_H / 2 + 54}
-            x2={COURT_X + COURT_W} y2={COURT_Y + COURT_H / 2 + 54}
+            x1={COURT_X} y1={COURT_Y + COURT_H - SERVICE_LINE_DEPTH}
+            x2={COURT_X + COURT_W} y2={COURT_Y + COURT_H - SERVICE_LINE_DEPTH}
             stroke="white" strokeOpacity={0.6} strokeWidth={1.5}
           />
 
-          {/* Center service line */}
+          {/* Center service line — spans from one service line, through
+              the net, to the other service line. */}
           <line
-            x1={COURT_X + COURT_W / 2} y1={COURT_Y + COURT_H / 2 - 54}
-            x2={COURT_X + COURT_W / 2} y2={COURT_Y + COURT_H / 2 + 54}
+            x1={COURT_X + COURT_W / 2} y1={COURT_Y + SERVICE_LINE_DEPTH}
+            x2={COURT_X + COURT_W / 2} y2={COURT_Y + COURT_H - SERVICE_LINE_DEPTH}
             stroke="white" strokeOpacity={0.6} strokeWidth={1.5}
           />
 
