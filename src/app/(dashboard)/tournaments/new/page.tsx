@@ -16,12 +16,13 @@ export default async function NewTournamentPage() {
           pctmt
         </Link>
         <Link href="/tournaments" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          ← Torneos
+          ← Competencias
         </Link>
       </header>
 
       <main className="max-w-lg mx-auto px-6 py-10">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-8">Nuevo torneo</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-1">Nueva competencia</h1>
+        <p className="text-sm text-gray-500 mb-8">Registra dónde compitió tu alumno — vos no organizás esto, solo llevás el seguimiento.</p>
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
           <TournamentForm action={createTournament} />
         </div>
