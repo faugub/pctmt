@@ -78,87 +78,80 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
   const total = sessionPlayers?.length ?? 0
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <Link href="/dashboard" className="font-semibold text-gray-900 tracking-tight hover:opacity-70 transition-opacity">
-          pctmt
-        </Link>
-        <Link href="/sessions" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          ← Sesiones
-        </Link>
-      </header>
+    <main className="max-w-lg mx-auto px-6 py-10 space-y-8">
 
-      <main className="max-w-lg mx-auto px-6 py-10 space-y-8">
+      <Link href="/sessions" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+        ← Sesiones
+      </Link>
 
-        {/* Header */}
-        <div className="flex items-start justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">{session.title}</h1>
-            <p className="text-sm text-gray-500 mt-1 capitalize">{formatDate(session.session_date)}</p>
-          </div>
-          <Link
-            href={`/sessions/${id}/edit`}
-            className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-700 hover:border-gray-400 transition-colors flex-shrink-0"
-          >
-            Editar
-          </Link>
-        </div>
-
-        {/* Meta */}
-        <div className="bg-white border border-gray-100 rounded-2xl shadow-sm divide-y divide-gray-50">
-          {[
-            { label: 'Tipo', value: session.session_type ? (TYPE_LABEL[session.session_type] ?? session.session_type) : '—' },
-            { label: 'Duración', value: session.duration_min ? `${session.duration_min} min` : '—' },
-            { label: 'Objetivos', value: session.objectives || '—' },
-            { label: 'Notas', value: session.notes || '—' },
-          ].map(({ label, value }) => (
-            <div key={label} className="flex justify-between items-start px-5 py-4 gap-4">
-              <span className="text-sm text-gray-500 flex-shrink-0">{label}</span>
-              <span className="text-sm font-medium text-gray-900 text-right">{value}</span>
-            </div>
-          ))}
-        </div>
-
-        {/* Blocks */}
+      {/* Header */}
+      <div className="flex items-start justify-between">
         <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Bloques de la sesión</h2>
-          <SessionBlocksPanel sessionId={id} initialBlocks={sessionBlocks} library={library ?? []} />
+          <h1 className="text-2xl font-semibold text-foreground">{session.title}</h1>
+          <p className="text-sm text-muted-foreground mt-1 capitalize">{formatDate(session.session_date)}</p>
         </div>
+        <Link
+          href={`/sessions/${id}/edit`}
+          className="px-3 py-1.5 text-sm border border-border rounded-lg text-foreground hover:bg-muted transition-colors flex-shrink-0"
+        >
+          Editar
+        </Link>
+      </div>
 
-        {/* Attendance */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-semibold text-gray-900">Asistencia</h2>
-            {total > 0 && (
-              <span className="text-sm text-gray-500">{attended}/{total} presentes</span>
-            )}
+      {/* Meta */}
+      <div className="bg-card border border-border rounded-2xl shadow-sm divide-y divide-border">
+        {[
+          { label: 'Tipo', value: session.session_type ? (TYPE_LABEL[session.session_type] ?? session.session_type) : '—' },
+          { label: 'Duración', value: session.duration_min ? `${session.duration_min} min` : '—' },
+          { label: 'Objetivos', value: session.objectives || '—' },
+          { label: 'Notas', value: session.notes || '—' },
+        ].map(({ label, value }) => (
+          <div key={label} className="flex justify-between items-start px-5 py-4 gap-4">
+            <span className="text-sm text-muted-foreground flex-shrink-0">{label}</span>
+            <span className="text-sm font-medium text-foreground text-right">{value}</span>
           </div>
+        ))}
+      </div>
 
-          {sessionPlayers && sessionPlayers.length > 0 ? (
-            <div className="space-y-2">
-              {sessionPlayers.map((sp) => (
-                <AttendanceToggle
-                  key={sp.player_id}
-                  sessionId={id}
-                  playerId={sp.player_id}
-                  initialAttended={sp.attended}
-                  playerName={sp.players?.full_name ?? 'Jugador'}
-                />
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-400 text-center py-6 bg-white border border-gray-100 rounded-2xl">
-              No hay jugadores en esta sesión.
-            </p>
+      {/* Blocks */}
+      <div>
+        <h2 className="text-base font-semibold text-foreground mb-4">Bloques de la sesión</h2>
+        <SessionBlocksPanel sessionId={id} initialBlocks={sessionBlocks} library={library ?? []} />
+      </div>
+
+      {/* Attendance */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-base font-semibold text-foreground">Asistencia</h2>
+          {total > 0 && (
+            <span className="text-sm text-muted-foreground">{attended}/{total} presentes</span>
           )}
         </div>
 
-        {/* Delete */}
-        <div className="pt-2">
-          <DeleteSessionButton id={id} title={session.title} seriesId={session.series_id} />
-        </div>
+        {sessionPlayers && sessionPlayers.length > 0 ? (
+          <div className="space-y-2">
+            {sessionPlayers.map((sp) => (
+              <AttendanceToggle
+                key={sp.player_id}
+                sessionId={id}
+                playerId={sp.player_id}
+                initialAttended={sp.attended}
+                playerName={sp.players?.full_name ?? 'Jugador'}
+              />
+            ))}
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground text-center py-6 bg-card border border-border rounded-2xl">
+            No hay jugadores en esta sesión.
+          </p>
+        )}
+      </div>
 
-      </main>
-    </div>
+      {/* Delete */}
+      <div className="pt-2">
+        <DeleteSessionButton id={id} title={session.title} seriesId={session.series_id} />
+      </div>
+
+    </main>
   )
 }
