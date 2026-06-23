@@ -21,63 +21,52 @@ export default async function BoardsPage() {
   if (error) throw new Error(error.message)
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <Link href="/dashboard" className="font-semibold text-gray-900 tracking-tight hover:opacity-70 transition-opacity">
-          pctmt
+    <main className="max-w-3xl mx-auto px-6 py-10">
+      <div className="flex items-center justify-between mb-8">
+        <div>
+          <h1 className="text-2xl font-semibold text-foreground">Pizarras tácticas</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">{boards?.length ?? 0} pizarras</p>
+        </div>
+        <Link
+          href="/boards/new"
+          className="px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-lg hover:opacity-90 transition-opacity"
+        >
+          + Nueva pizarra
         </Link>
-        <Link href="/dashboard" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          ← Dashboard
-        </Link>
-      </header>
+      </div>
 
-      <main className="max-w-3xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Pizarras tácticas</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{boards?.length ?? 0} pizarras</p>
-          </div>
-          <Link
-            href="/boards/new"
-            className="px-4 py-2 bg-gray-900 text-white text-sm font-medium rounded-lg hover:bg-gray-700 transition-colors"
-          >
-            + Nueva pizarra
+      {boards && boards.length > 0 ? (
+        <ul className="space-y-2">
+          {boards.map((b) => {
+            const strategyTitle = (b.strategies as unknown as { title: string } | null)?.title
+            return (
+              <li key={b.id}>
+                <Link
+                  href={`/boards/${b.id}`}
+                  className="flex items-center justify-between px-5 py-4 bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{b.title}</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Editada {formatDate(b.updated_at)}
+                      {strategyTitle ? ` · vinculada a "${strategyTitle}"` : ''}
+                    </p>
+                  </div>
+                  <span className="text-muted-foreground text-lg">›</span>
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      ) : (
+        <div className="text-center py-20 text-muted-foreground">
+          <p className="text-4xl mb-4">🎾</p>
+          <p className="text-sm">Todavía no hay pizarras.</p>
+          <Link href="/boards/new" className="text-sm text-foreground underline mt-2 inline-block">
+            Crea la primera
           </Link>
         </div>
-
-        {boards && boards.length > 0 ? (
-          <ul className="space-y-2">
-            {boards.map((b) => {
-              const strategyTitle = (b.strategies as unknown as { title: string } | null)?.title
-              return (
-                <li key={b.id}>
-                  <Link
-                    href={`/boards/${b.id}`}
-                    className="flex items-center justify-between px-5 py-4 bg-white border border-gray-100 rounded-2xl shadow-sm hover:shadow-md transition-shadow"
-                  >
-                    <div>
-                      <p className="text-sm font-medium text-gray-900">{b.title}</p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        Editada {formatDate(b.updated_at)}
-                        {strategyTitle ? ` · vinculada a "${strategyTitle}"` : ''}
-                      </p>
-                    </div>
-                    <span className="text-gray-300 text-lg">›</span>
-                  </Link>
-                </li>
-              )
-            })}
-          </ul>
-        ) : (
-          <div className="text-center py-20 text-gray-400">
-            <p className="text-4xl mb-4">🎾</p>
-            <p className="text-sm">Todavía no hay pizarras.</p>
-            <Link href="/boards/new" className="text-sm text-gray-900 underline mt-2 inline-block">
-              Crea la primera
-            </Link>
-          </div>
-        )}
-      </main>
-    </div>
+      )}
+    </main>
   )
 }
