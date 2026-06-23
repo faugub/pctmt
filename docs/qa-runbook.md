@@ -6,7 +6,7 @@ Manual end-to-end test script, written from the coach's point of view. Run this 
 
 **Environment:** Run this against https://pctmt-azure.vercel.app for a real pre-launch check, or `localhost:3000` during development. Use a throwaway test account — this script creates real data.
 
-**Before running Section 6b, 6c, or 12 (Phase 5 features):** confirm both new migrations are applied — `20260622000005_tactic_boards.sql` and `20260623000006_session_blocks_completed.sql`. See `runbook.md` → Running SQL migrations. Without them, `/boards` and the session blocks panel will error.
+**Before running Section 6b, 6c, 12, or 13 (Phase 5/6 features):** confirm all three migrations are applied — `20260622000005_tactic_boards.sql`, `20260623000006_session_blocks_completed.sql`, and `20260623000007_phase6_theming_branding.sql`. See `runbook.md` → Running SQL migrations. Without them, `/boards`, the session blocks panel, and the `/settings` branding form will error.
 
 ---
 
@@ -21,7 +21,7 @@ Manual end-to-end test script, written from the coach's point of view. Run this 
 
 - [ ] Go to `/register`. Create an account with a throwaway email and password.
   - **Expected:** Redirected to `/dashboard` after successful registration.
-- [ ] Click "Salir" (logout) in the dashboard header.
+- [ ] Click "Salir" (logout) in the topbar.
   - **Expected:** Redirected to `/login`.
 - [ ] Try visiting `/dashboard` directly while logged out.
   - **Expected:** Redirected to `/login` (middleware blocks the route).
@@ -219,6 +219,7 @@ This is the highest-priority flow to get right — it's the feature the whole pr
 - [ ] Open a **separate incognito window with no pctmt session** (or just log out in a second tab). Paste the copied URL.
   - **Expected:** Page loads **without redirecting to login**. Shows the player's name, level, progress chart (if ≥2 snapshots exist — they should, from Section 3), an attendance % card (if there's attendance in the last 30 days), and competition results (from Section 8).
   - **This is the critical check.** If this redirects to `/login`, the middleware public-route exemption broke — stop and fix before doing anything else.
+- [ ] **(Phase 6)** Confirm the header on this public page shows "pctmt" by default, or the coach's own brand name/logo if one is set in `/settings` (test this again after Section 13 below, with branding configured).
 - [ ] Back in your authenticated session, click **"Generar un enlace nuevo"** on the SharePanel, confirm the dialog.
   - **Expected:** Token changes (URL field updates).
 - [ ] Try the **old** copied URL from before regenerating.
@@ -265,22 +266,48 @@ This is the highest-priority flow to get right — it's the feature the whole pr
 Run these after the sections above, since they depend on data created throughout.
 
 - [ ] **Dashboard counts.** Go to `/dashboard`. Confirm the 6 stat cards (Jugadores, Sesiones, Competencias, Estrategias, Bloques, Pizarras) show counts that roughly match what you created (exact numbers depend on what you deleted along the way — just confirm none show 0 if you know you created data, and none show an obviously wrong/stale number).
-- [ ] **Navigation completeness.** From `/dashboard`, confirm you can reach every module within 1 click: Jugadores, Sesiones, Competencias, Estrategias, Bloques, Pizarras, Calendario, Planes.
+- [ ] **Navigation completeness.** From the sidebar (visible on every page now, not just the dashboard), confirm you can reach every module within 1 click: Panel, Calendario, Jugadores, Sesiones, Series, Bloques, Planes, Estrategias, Pizarras, Competencias, Ajustes.
 - [ ] **RLS sanity check (optional, requires a second account).** Register a second throwaway account. Confirm its dashboard shows 0 for everything and it cannot see the first account's players, sessions, plans, or boards by guessing URLs (try visiting a known player ID or board ID from account 1 while logged in as account 2 — should 404 or be denied).
-- [ ] **Mobile/tablet viewport.** Resize the browser to ~375px wide for mobile and ~768–1024px for tablet (or use device emulation). Re-check the calendar grid (both views), the dashboard stat cards, the tactical whiteboard, the session blocks panel, and the share panel — confirm nothing overflows, no tap target feels too small, and dragging on the whiteboard still works with touch emulation. This app's "wow moment" (Section 9) is specifically meant to be opened on a phone by a player, and the whiteboard/blocks panel are specifically meant for tablet use mid-session, so this matters more than most apps.
+- [ ] **Mobile/tablet viewport.** Resize the browser to ~375px wide for mobile and ~768–1024px for tablet (or use device emulation). Re-check the calendar grid (both views), the dashboard stat cards, the tactical whiteboard, the session blocks panel, the share panel, and the new sidebar (should collapse into the hamburger menu below the `md` breakpoint) — confirm nothing overflows, no tap target feels too small, and dragging on the whiteboard still works with touch emulation. This app's "wow moment" (Section 9) is specifically meant to be opened on a phone by a player, and the whiteboard/blocks panel are specifically meant for tablet use mid-session, so this matters more than most apps.
 
 ---
 
-## 13. Sign-off
+## 13. Theme, Language & Branding (Phase 6)
+
+- [ ] Confirm migration `20260623000007_phase6_theming_branding.sql` is applied (see `runbook.md`) before starting this section.
+- [ ] In the topbar, click the theme toggle (🌙/☀️ icon).
+  - **Expected:** The whole app — sidebar, topbar, page background, cards — switches to dark colors immediately, no flash or partial-switch.
+- [ ] **Reload the page.**
+  - **Expected:** Stays in dark mode (no flash back to light before settling dark) — this is the no-flash script doing its job.
+- [ ] Open a new incognito window with no `localStorage`, visit the app while your OS/browser is set to dark mode.
+  - **Expected:** App loads in dark mode by default (falls back to `prefers-color-scheme`), without you ever touching the toggle.
+- [ ] Toggle back to light mode, confirm it also persists across reload.
+- [ ] In the topbar, change the language dropdown from ES to EN.
+  - **Expected:** Sidebar labels, topbar buttons, and (if you navigate there) `/settings` text switch to English. The rest of the app's pages (forms, lists) stay in Spanish — that's expected per the current scope, see `runbook.md` Known Gaps.
+- [ ] **Reload the page** with EN selected.
+  - **Expected:** Stays in English (cookie-based, server-rendered — no flash back to Spanish).
+- [ ] Switch back to ES before continuing, to keep the rest of this script's expected Spanish copy accurate.
+- [ ] Go to `/settings`. Set a brand name (e.g. "Academia Test"), a logo URL (any public image URL), and pick a custom primary color. Save.
+  - **Expected:** Sidebar/topbar immediately show the new brand name + logo instead of "pctmt", and the active nav-item highlight / primary buttons across the app now use your chosen color.
+- [ ] Go to Test Player One's shared profile link (from Section 9) in an incognito window.
+  - **Expected:** The header on the public page shows your new brand name/logo too, and the "Campeón"/result badges use your chosen color — confirming `get_share_branding()` is wired correctly.
+- [ ] Clear the brand name and logo URL (leave the color), save.
+  - **Expected:** Sidebar/topbar fall back to "pctmt" with no logo; the custom color is still applied.
+- [ ] Resize to mobile width (~375px). Tap the hamburger icon in the topbar.
+  - **Expected:** A drawer slides in from the left with the full sidebar nav. Tapping a link closes the drawer and navigates. Tapping the dark overlay also closes it.
+
+---
+
+## 14. Sign-off
 
 - [ ] All sections above passed, or failures are logged in `docs/runbook.md` under "Known Gaps" with enough detail to act on later.
-- [ ] No console errors in the browser dev tools during any of the above (spot-check at least the Calendar, Plans, Boards, and Share pages, since they're the newest and most complex).
+- [ ] No console errors in the browser dev tools during any of the above (spot-check at least the Calendar, Plans, Boards, Share, and Settings pages, since they're the newest and most complex).
 - [ ] Note the date and commit SHA this run was performed against, below:
 
 ```
 QA run date:
 Commit SHA tested:
-Migrations 20260622000005 and 20260623000006 applied: YES / NO
+Migrations 20260622000005, 20260623000006, and 20260623000007 applied: YES / NO
 Result: PASS / PASS WITH KNOWN GAPS / FAIL
 Notes:
 ```
