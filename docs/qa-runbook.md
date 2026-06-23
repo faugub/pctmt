@@ -6,6 +6,8 @@ Manual end-to-end test script, written from the coach's point of view. Run this 
 
 **Environment:** Run this against https://pctmt-azure.vercel.app for a real pre-launch check, or `localhost:3000` during development. Use a throwaway test account — this script creates real data.
 
+**Before running Section 6b, 6c, or 12 (Phase 5 features):** confirm both new migrations are applied — `20260622000005_tactic_boards.sql` and `20260623000006_session_blocks_completed.sql`. See `runbook.md` → Running SQL migrations. Without them, `/boards` and the session blocks panel will error.
+
 ---
 
 ## 0. Setup
@@ -66,6 +68,8 @@ Manual end-to-end test script, written from the coach's point of view. Run this 
   - **Expected:** Only strategies tagged with that zone show.
 - [ ] Click "Todas" to clear the filter.
   - **Expected:** All strategies show again.
+- [ ] On the strategy detail page, find the **"Pizarras tácticas"** section (Phase 5). Click **+ Nueva pizarra**.
+  - **Expected:** Lands on `/boards/new` with this strategy pre-selected in the link dropdown. Leave this for Section 5b below.
 
 ---
 
@@ -85,7 +89,26 @@ Manual end-to-end test script, written from the coach's point of view. Run this 
 
 ---
 
-## 6. Calendar + Recurring Series (Phase 4A)
+## 5b. Tactical Whiteboard (Phase 5)
+
+- [ ] From the strategy's "+ Nueva pizarra" link (Section 4) — or go directly to `/boards/new` — create a board: title "Jugada de prueba", leave the strategy link as-is.
+  - **Expected:** Redirected to `/boards/[id]`, a padel court renders (teal surface, net, service lines closer to the back wall than the net — see `architecture.md` for the regulation distances if this looks off).
+- [ ] Tap **+ Mi jugador** twice, **+ Rival** once, **+ Pelota** once.
+  - **Expected:** Tokens appear on the court, auto-numbered (1, 2 for your players), color-coded blue/red/yellow.
+- [ ] Drag a token to a new position (mouse drag, or touch on a real device/tablet).
+  - **Expected:** Token follows the pointer smoothly; "Guardando…" then "Guardado ✓" appears in the toolbar.
+- [ ] Tap **Modo línea**, then drag from one point on the court to another.
+  - **Expected:** An arrow line is drawn. Modo línea stays active so you can draw a second line without re-tapping the toggle.
+- [ ] Tap a token, then tap **Eliminar seleccionado**.
+  - **Expected:** Token is removed.
+- [ ] **Reload the page.**
+  - **Expected:** All remaining tokens and lines are exactly where you left them — this is the real test of autosave, not just the in-session UI state.
+- [ ] Go to `/boards`, confirm the board appears in the list with the strategy link noted (if you created it from the strategy page).
+- [ ] Go back to the strategy detail page (Section 4) — confirm the board now appears under "Pizarras tácticas" there too.
+
+---
+
+## 6. Calendar + Recurring Series
 
 This is the most complex flow in the app — go slowly.
 
@@ -112,13 +135,35 @@ This is the most complex flow in the app — go slowly.
   - **Note:** This regenerates all sessions in the series, which means any attendance you'd marked is reset. That's expected behavior per the design — re-test attendance after this step if you need to (see Section 7).
 - [ ] On the same series, test the **"Guardar — solo el molde"** button once (any small change, e.g. add a note).
   - **Expected:** Existing sessions are untouched; only future-generated ones would reflect the change (hard to observe immediately since the next 90 days are already generated — this is a lower-priority check, just confirm it doesn't error).
-- [ ] Test **"Eliminar serie"** is available but **don't click it yet** — you'll want the series alive for Section 10 (Plans). Confirm the button shows a confirm dialog if you do test it, then re-create the series if you deleted it.
+
+### 6a. Monthly view (Phase 5)
+
+- [ ] Click **Mes** next to the Semana toggle.
+  - **Expected:** Grid switches to a full month, 6 rows × 7 columns, days outside the current month dimmed. Sessions from "Academia Test" show as small colored pills inside their day cell.
+- [ ] Click a day cell that has a session pill on it.
+  - **Expected:** Jumps to the **weekly** view for the week containing that day (clicking a day always opens the full week detail, not just that day).
+- [ ] Click **Siguiente ›** / **‹ Anterior** while in month view.
+  - **Expected:** Navigates by whole months, not weeks. "Hoy" returns to the current month.
+- [ ] Click **Semana** to switch back.
+  - **Expected:** Returns to the current week (today's week), not wherever you'd navigated to in month view.
+
+### 6b. Scoped delete (Phase 5)
+
+- [ ] Open one of the upcoming "Academia Test" sessions. Confirm the delete section now shows **three** buttons instead of one: "Eliminar solo esta sesión", "Eliminar esta y las futuras", "Eliminar toda la serie".
+- [ ] Click **"Eliminar esta y las futuras"**, confirm the dialog.
+  - **Expected:** Redirected to `/calendar`. That session and every later Tuesday/Thursday instance are gone from the calendar. Sessions **before** that date are untouched.
+- [ ] Open an earlier (still-existing) session from the same series and confirm it's still there with its attendance intact.
+- [ ] Go to `/calendar` → series list → "Academia Test" → **Eliminar serie** on the edit page.
+  - **Expected:** Two buttons: "Eliminar solo el molde (conservar sesiones)" and "Eliminar serie y todas sus sesiones". Test the first one.
+  - **Expected after "solo el molde":** The series disappears from the series list, but any remaining generated sessions are still visible in `/sessions` as one-off sessions (not deleted).
+- [ ] Re-create the series (you'll want a recurring series again to sanity-check this fully): this time test **"Eliminar serie y todas sus sesiones"** instead.
+  - **Expected:** Series and every one of its sessions (past and future) are gone. Check `/sessions` to confirm none remain.
 
 ---
 
-## 7. Sessions + Attendance
+## 7. Sessions + Attendance + Blocks
 
-- [ ] Dashboard → **Sesiones**. Confirm the sessions generated by the series in Section 6 appear in the list, newest first.
+- [ ] Dashboard → **Sesiones**. Confirm sessions appear in the list, newest first.
 - [ ] Click **+ Nueva sesión** (a manual, non-recurring one this time).
   - Title: "Sesión individual de prueba", date: today, type: Técnica, add both test players.
   - **Expected:** Redirected to detail page, both players listed under attendance.
@@ -129,21 +174,39 @@ This is the most complex flow in the app — go slowly.
 - [ ] Go to one of the players' detail pages (Section 2) → scroll to "Sesiones".
   - **Expected:** This session appears in their attendance history with the correct date and attended/faltó badge.
 
+### 7a. Session blocks checklist (Phase 5)
+
+- [ ] On the same test session, find the **"Bloques de la sesión"** section. Tap **+ Añadir bloque**.
+  - **Expected:** A grid of type filter pills + block cards appears, showing the two blocks created in Section 5.
+- [ ] Tap one of the block cards.
+  - **Expected:** It's added to the list above immediately (no page reload), with its type dot and duration shown. The picker stays open.
+- [ ] Tap a second block card, then tap **Listo** to close the picker.
+  - **Expected:** Both blocks now show in the checklist, with a header like "0/2 completados · 30 min en total" (durations depend on what you created).
+- [ ] Tap directly on one block's text (not the circle).
+  - **Expected:** It toggles to completed — circle fills green with a checkmark, title gets a strikethrough, counter updates to "1/2 completados".
+- [ ] Use the ↑/↓ buttons to swap the order of the two blocks.
+  - **Expected:** Order visibly swaps immediately.
+- [ ] Tap ✕ on one block to remove it.
+  - **Expected:** It disappears from the list, counter updates.
+- [ ] **Reload the page.**
+  - **Expected:** The remaining block, its completed state, and the order all persisted — this is the real test, not just the in-session state.
+
 ---
 
-## 8. Tournaments
+## 8. Competencias
 
-- [ ] Dashboard → **Torneos** → **+ Nuevo**.
+- [ ] Dashboard → **Competencias** → **+ Nueva competencia**.
+  - **Expected:** Page copy talks about registering where a player competed — not about organizing a tournament. ("Torneos" should not appear anywhere in this flow as of Phase 5.)
 - [ ] Create: name "Torneo de Prueba", start date today, category "masculino 3a".
-- [ ] On the tournament detail page, add a result for Test Player One: partner name "Sparring", final round "Semifinal", sets won 2, sets lost 1.
-  - **Expected:** Result appears on the tournament page.
+- [ ] On the competition detail page, add a result for Test Player One: partner name "Sparring", final round "Semifinal", sets won 2, sets lost 1.
+  - **Expected:** Result appears on the page, under "Resultados de tus alumnos".
 - [ ] Go to Test Player One's profile.
-  - **Expected:** This result does **not** currently show inline on the player profile page (only on the tournament page) — confirm this matches what you see; if a future change adds it there, update this checklist.
-- [ ] Edit the tournament (change location), save. Delete the result (confirm dialog), confirm it's removed.
+  - **Expected:** This result does **not** currently show inline on the player profile page (only on the competition page) — confirm this matches what you see; if a future change adds it there, update this checklist.
+- [ ] Edit the competition (change location), save. Delete the result (confirm dialog), confirm it's removed.
 
 ---
 
-## 9. Shared Player Profile (Phase 4B) — the "wow moment"
+## 9. Shared Player Profile — the "wow moment"
 
 This is the highest-priority flow to get right — it's the feature the whole pricing story depends on.
 
@@ -154,7 +217,7 @@ This is the highest-priority flow to get right — it's the feature the whole pr
 - [ ] Click **Copiar**.
   - **Expected:** Button briefly shows "¡Copiado!" feedback.
 - [ ] Open a **separate incognito window with no pctmt session** (or just log out in a second tab). Paste the copied URL.
-  - **Expected:** Page loads **without redirecting to login**. Shows the player's name, level, progress chart (if ≥2 snapshots exist — they should, from Section 3), an attendance % card (if there's attendance in the last 30 days), and tournament results (from Section 8).
+  - **Expected:** Page loads **without redirecting to login**. Shows the player's name, level, progress chart (if ≥2 snapshots exist — they should, from Section 3), an attendance % card (if there's attendance in the last 30 days), and competition results (from Section 8).
   - **This is the critical check.** If this redirects to `/login`, the middleware public-route exemption broke — stop and fix before doing anything else.
 - [ ] Back in your authenticated session, click **"Generar un enlace nuevo"** on the SharePanel, confirm the dialog.
   - **Expected:** Token changes (URL field updates).
@@ -165,12 +228,12 @@ This is the highest-priority flow to get right — it's the feature the whole pr
 
 ---
 
-## 10. Training Plans (Phase 4B)
+## 10. Training Plans
 
 - [ ] Dashboard → **Planes** card → **+ Nuevo plan**.
 - [ ] Create a **group** plan:
   - Title: "Ciclo de academia"
-  - Target: "Un grupo (serie)" → select "Academia Test" (from Section 6)
+  - Target: "Un grupo (serie)" → select a series (re-create "Academia Test" first if you deleted it in 6b)
   - Total sessions: 6
   - Starts on: today
   - Goal: "Mejorar la consistencia de fondo"
@@ -181,33 +244,43 @@ This is the highest-priority flow to get right — it's the feature the whole pr
   - **Expected:** Phase removed from the list. (Note: this does NOT currently un-assign sessions that referenced it — if you assigned sessions to the phase first, check they don't break; if no UI exists yet to assign plan_sessions to phases, this is expected per the Known Gaps note in `runbook.md`.)
 - [ ] Click **"Saltar"** on one of the planned sessions.
   - **Expected:** That row's status badge changes to "Saltada", and the "Saltar" button disappears for that row (can't skip twice).
-- [ ] Go back to `/plans`. Confirm "Ciclo de academia" shows in the list with the correct target label ("Academia Test") and session count.
+- [ ] Go back to `/plans`. Confirm "Ciclo de academia" shows in the list with the correct target label and session count.
 - [ ] Create a **second** plan, this time **individual**, targeting Test Player Two, 4 sessions.
   - **Expected:** Same flow works with target_type switched; the plan list correctly shows the player's name instead of a series title.
 - [ ] On either plan, test **"Eliminar plan"** (confirm dialog appears, mentions that linked sessions aren't deleted). Confirm it actually removes the plan from `/plans`.
 
 ---
 
-## 11. Cross-Cutting Checks
+## 11. Dashboard — Coach Utilization (Phase 5)
 
-Run these after the sections above, since they depend on data created throughout.
-
-- [ ] **Dashboard counts.** Go to `/dashboard`. Confirm the 5 stat cards (Jugadores, Sesiones, Torneos, Estrategias, Bloques) show counts that roughly match what you created (exact numbers depend on what you deleted along the way — just confirm none show 0 if you know you created data, and none show an obviously wrong/stale number).
-- [ ] **Navigation completeness.** From `/dashboard`, confirm you can reach every module within 1 click: Jugadores, Sesiones, Torneos, Estrategias, Bloques, Calendario, Planes. (If any module isn't reachable from the dashboard, that's a navigation gap — see the pattern noted in `runbook.md`.)
-- [ ] **RLS sanity check (optional, requires a second account).** Register a second throwaway account. Confirm its dashboard shows 0 for everything and it cannot see the first account's players, sessions, or plans by guessing URLs (try visiting a known player ID from account 1 while logged in as account 2 — should 404 or be denied).
-- [ ] **Mobile viewport.** Resize the browser to ~375px wide (or use device emulation). Re-check the calendar grid, the dashboard stat cards, and the share panel — confirm nothing overflows or becomes unusable. This app's "wow moment" (Section 9) is specifically meant to be opened on a phone by a player, so this matters more than most apps.
+- [ ] Go to `/dashboard`. Find the **"Horas de coaching"** card.
+  - **Expected:** A headline number for "this month," a "+N% / -N% vs mes pasado" delta (or no delta if last month had zero hours), and a 6-month bar chart below.
+- [ ] Confirm the headline number roughly matches the sum of `duration_min` across the sessions you created today (60 + 90 + whatever test sessions are dated this month, converted to hours).
+- [ ] Confirm there is **no** "Progreso de jugadores" chart on the dashboard anymore — that chart now only lives on each player's own detail page (Section 3), which is the intentional Phase 5 change.
 
 ---
 
-## 12. Sign-off
+## 12. Cross-Cutting Checks
+
+Run these after the sections above, since they depend on data created throughout.
+
+- [ ] **Dashboard counts.** Go to `/dashboard`. Confirm the 6 stat cards (Jugadores, Sesiones, Competencias, Estrategias, Bloques, Pizarras) show counts that roughly match what you created (exact numbers depend on what you deleted along the way — just confirm none show 0 if you know you created data, and none show an obviously wrong/stale number).
+- [ ] **Navigation completeness.** From `/dashboard`, confirm you can reach every module within 1 click: Jugadores, Sesiones, Competencias, Estrategias, Bloques, Pizarras, Calendario, Planes.
+- [ ] **RLS sanity check (optional, requires a second account).** Register a second throwaway account. Confirm its dashboard shows 0 for everything and it cannot see the first account's players, sessions, plans, or boards by guessing URLs (try visiting a known player ID or board ID from account 1 while logged in as account 2 — should 404 or be denied).
+- [ ] **Mobile/tablet viewport.** Resize the browser to ~375px wide for mobile and ~768–1024px for tablet (or use device emulation). Re-check the calendar grid (both views), the dashboard stat cards, the tactical whiteboard, the session blocks panel, and the share panel — confirm nothing overflows, no tap target feels too small, and dragging on the whiteboard still works with touch emulation. This app's "wow moment" (Section 9) is specifically meant to be opened on a phone by a player, and the whiteboard/blocks panel are specifically meant for tablet use mid-session, so this matters more than most apps.
+
+---
+
+## 13. Sign-off
 
 - [ ] All sections above passed, or failures are logged in `docs/runbook.md` under "Known Gaps" with enough detail to act on later.
-- [ ] No console errors in the browser dev tools during any of the above (spot-check at least the Calendar, Plans, and Share pages, since they're the newest and most complex).
+- [ ] No console errors in the browser dev tools during any of the above (spot-check at least the Calendar, Plans, Boards, and Share pages, since they're the newest and most complex).
 - [ ] Note the date and commit SHA this run was performed against, below:
 
 ```
 QA run date:
 Commit SHA tested:
+Migrations 20260622000005 and 20260623000006 applied: YES / NO
 Result: PASS / PASS WITH KNOWN GAPS / FAIL
 Notes:
 ```
