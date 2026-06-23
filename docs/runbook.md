@@ -63,7 +63,7 @@ git commit -m "type: short description"
 git push origin main
 ```
 
-**Commit types:** `feat` `fix` `docs` `chore`
+**Commit types:** `feat` `fix` `docs` `chore` `refactor`
 
 ### GitHub token rotation
 
@@ -140,8 +140,13 @@ NEXT_PUBLIC_SITE_URL=https://pctmt-azure.vercel.app
 | `20260615000002_phase4a_calendar_blocks.sql` | Phase 4A | ✅ Applied 2026-06-20 |
 | `20260615000003_phase4b_plans_sharing.sql` | Phase 4B | ✅ Applied 2026-06-20 |
 | `20260615000004_phase4c_playtomic.sql` | Phase 4C | ✅ Applied 2026-06-20 (schema only — no sync code uses these tables yet) |
+| `20260622000005_tactic_boards.sql` | Phase 5 | ⚠️ **Written, not yet confirmed applied** — run this before using `/boards`, or every page in that module will error |
+| `20260623000006_session_blocks_completed.sql` | Phase 5 | ⚠️ **Written, not yet confirmed applied** — run this before using the session blocks checklist on `/sessions/[id]` |
 
-Always apply migrations in order. Never skip a file. All four are currently applied in production.
+Always apply migrations in order. Never skip a file. The first four are confirmed applied in production; **the last two need to be run manually before their features will work** — check off here once done:
+
+- [ ] `20260622000005_tactic_boards.sql` applied to production
+- [ ] `20260623000006_session_blocks_completed.sql` applied to production
 
 ---
 
@@ -183,23 +188,26 @@ pctmt/
 ├── public/
 ├── supabase/
 │   └── migrations/
-│       ├── 20260611000001_initial_schema.sql           # ✅ applied
-│       ├── 20260615000002_phase4a_calendar_blocks.sql  # ✅ applied
-│       ├── 20260615000003_phase4b_plans_sharing.sql    # ✅ applied
-│       └── 20260615000004_phase4c_playtomic.sql        # ✅ applied (schema only)
+│       ├── 20260611000001_initial_schema.sql            # ✅ applied
+│       ├── 20260615000002_phase4a_calendar_blocks.sql   # ✅ applied
+│       ├── 20260615000003_phase4b_plans_sharing.sql     # ✅ applied
+│       ├── 20260615000004_phase4c_playtomic.sql         # ✅ applied (schema only)
+│       ├── 20260622000005_tactic_boards.sql             # ⚠️ apply manually
+│       └── 20260623000006_session_blocks_completed.sql  # ⚠️ apply manually
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/
 │   │   │   ├── login/           # ✅
 │   │   │   └── register/        # ✅
 │   │   ├── (dashboard)/
-│   │   │   ├── dashboard/       # Stats, chart, recent activity, Calendar/Planes entry points ✅
+│   │   │   ├── dashboard/       # Stats, coach utilization chart, recent activity ✅
 │   │   │   ├── players/         # CRUD + snapshots + attendance history + SharePanel ✅
-│   │   │   ├── sessions/        # CRUD + attendance toggle ✅
-│   │   │   ├── tournaments/     # CRUD + results per player ✅
-│   │   │   ├── strategies/      # CRUD + zone filter + tags ✅
-│   │   │   ├── calendar/        # Weekly 7-column view + series list ✅
+│   │   │   ├── sessions/        # CRUD + attendance toggle + SessionBlocksPanel ✅
+│   │   │   ├── tournaments/     # CRUD + results per player — UI copy says "Competencias" ✅
+│   │   │   ├── strategies/      # CRUD + zone filter + tags + linked tactic_boards ✅
+│   │   │   ├── calendar/        # Week + month views + series list ✅
 │   │   │   ├── blocks/          # Training block library, CRUD + type filter ✅
+│   │   │   ├── boards/          # Tactical whiteboard — list, new, editor ✅
 │   │   │   ├── series/
 │   │   │   │   ├── new/         # Create recurring series ✅
 │   │   │   │   └── [id]/edit/   # Scoped edit (this/future/all) ✅
@@ -215,13 +223,15 @@ pctmt/
 │   │   │   ├── auth.ts          # login, register, logout ✅
 │   │   │   ├── players.ts       # create, update, delete ✅
 │   │   │   ├── snapshots.ts     # create, delete ✅
-│   │   │   ├── sessions.ts      # create, update, attendance, delete ✅
+│   │   │   ├── sessions.ts      # create, update, attendance ✅ — deleteSession is dead code, see architecture.md
 │   │   │   ├── tournaments.ts   # create, update, results, delete ✅
 │   │   │   ├── strategies.ts    # create, update, delete ✅
 │   │   │   ├── blocks.ts        # create, update, delete ✅
-│   │   │   ├── series.ts        # createSeries, generateSessionsForSeries, updateSeries, updateSingleSessionInSeries, deleteSeries ✅
+│   │   │   ├── series.ts        # createSeries, generateSessionsForSeries, updateSeries, updateSingleSessionInSeries, deleteSeries(cascade), deleteSeriesOccurrence(scope) ✅
 │   │   │   ├── plans.ts         # createPlan, updatePlan, deletePlan, addPhase, deletePhase, updatePlanSession, linkSessionToPlan, markPlanSessionSkipped ✅
-│   │   │   └── sharing.ts       # enablePlayerShare, disablePlayerShare, regenerateShareToken ✅
+│   │   │   ├── sharing.ts       # enablePlayerShare, disablePlayerShare, regenerateShareToken ✅
+│   │   │   ├── boards.ts        # createBoard, saveBoardData, renameBoard, deleteBoard ✅
+│   │   │   └── sessionBlocks.ts # addBlockToSession, removeSessionBlock, toggleSessionBlockCompleted, reorderSessionBlock ✅
 │   │   ├── globals.css
 │   │   ├── layout.tsx
 │   │   └── page.tsx
@@ -233,7 +243,7 @@ pctmt/
 │   │       ├── DeleteSnapshotButton.tsx
 │   │       ├── SessionForm.tsx
 │   │       ├── AttendanceToggle.tsx
-│   │       ├── DeleteSessionButton.tsx
+│   │       ├── DeleteSessionButton.tsx        # ✅ — scoped (this/future/all) when session is in a series
 │   │       ├── TournamentForm.tsx
 │   │       ├── ResultForm.tsx
 │   │       ├── DeleteResultButton.tsx
@@ -241,14 +251,18 @@ pctmt/
 │   │       ├── StrategyForm.tsx
 │   │       ├── DeleteStrategyButton.tsx
 │   │       ├── ProgressChart.tsx
-│   │       ├── BlockForm.tsx          # ✅
-│   │       ├── DeleteBlockButton.tsx  # ✅
-│   │       ├── SeriesForm.tsx         # ✅ — supports extraActions for scoped edits
-│   │       ├── DeleteSeriesButton.tsx # ✅
-│   │       ├── PlanForm.tsx           # ✅ — group/individual target toggle
-│   │       ├── AddPhaseForm.tsx       # ✅ — collapsible inline form
-│   │       ├── DeletePlanButton.tsx   # ✅
-│   │       └── SharePanel.tsx         # ✅ — toggle, copy link, regenerate token
+│   │       ├── CoachHoursChart.tsx            # ✅ — Recharts bar chart, dashboard
+│   │       ├── BlockForm.tsx
+│   │       ├── DeleteBlockButton.tsx
+│   │       ├── SeriesForm.tsx                 # extraActions for scoped edits
+│   │       ├── DeleteSeriesButton.tsx         # ✅ — two scopes: template-only vs cascade
+│   │       ├── PlanForm.tsx                   # group/individual target toggle
+│   │       ├── AddPhaseForm.tsx               # collapsible inline form
+│   │       ├── DeletePlanButton.tsx
+│   │       ├── SharePanel.tsx                 # toggle, copy link, regenerate token
+│   │       ├── TacticBoardEditor.tsx          # ✅ — SVG drag/drop court, pointer-capture pattern
+│   │       ├── DeleteBoardButton.tsx          # ✅
+│   │       └── SessionBlocksPanel.tsx         # ✅ — tap-to-add checklist, optimistic state
 │   ├── lib/
 │   │   └── supabase/
 │   │       ├── client.ts
@@ -268,10 +282,14 @@ pctmt/
 
 ## Known Gaps (tracked, not yet fixed)
 
-These are real gaps found during the Phase 4A/4B build that don't block usage today but are worth closing soon:
-
-- **No UI to attach training blocks to a session.** The `session_blocks` table and RLS exist; there's no panel on the session-detail page to add/reorder blocks yet.
 - **No UI to link a real session to a plan slot.** `linkSessionToPlan()` exists as a Server Action but nothing calls it — a coach can't yet mark "session #3 of this plan = this real session" from the UI.
 - **`SharePanel.tsx` hardcodes the production URL** instead of reading an env var (see Vercel environment variables section above).
 - **Playtomic tables have no sync logic.** Schema is applied; everything else in Phase 4C is unbuilt.
 - **`players` has no `email` column**, which Phase 4C's player-matching-by-email design assumes. Will need a small migration when that phase starts.
+- **`deleteSession()` in `actions/sessions.ts` is unused dead code** — superseded by `deleteSeriesOccurrence()` in `actions/series.ts` (Phase 5), which handles both one-off and series sessions through a single scoped function. Safe to delete in a future cleanup pass, just not removed yet to keep the Phase 5 diff focused.
+- **`/tournaments` routes and `Tournament*`-named files are internal-only inconsistencies**, not bugs: the UI says "Competencias" everywhere, but the URL, the database table, and component/action names still say "tournament." See `architecture.md` Phase 5 design decisions for why this wasn't renamed.
+
+**Closed in Phase 5 (previously listed here):**
+- ~~No UI to attach training blocks to a session~~ — closed by `SessionBlocksPanel`.
+- ~~Deleting a series leaves orphaned sessions behind~~ — closed by `deleteSeries(id, cascade)`.
+- ~~No way to delete "this and future" occurrences of a recurring session~~ — closed by `deleteSeriesOccurrence(sessionId, scope)`.
