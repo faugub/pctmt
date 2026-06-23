@@ -9,14 +9,16 @@ Technical design, database schema, and engineering decisions.
 | Layer | Technology | Version | Notes |
 |---|---|---|---|
 | Framework | Next.js | 16.2.9 | App Router, TypeScript |
-| Styling | Tailwind CSS | v4 | Utility-first CSS |
+| Styling | Tailwind CSS | v4 | Utility-first CSS, extended with semantic color tokens (`background`, `card`, `border`, `muted`, `primary`) — see Phase 6 below |
+| Theming | CSS variables + `.dark` class | — | No `next-themes`; see Phase 6 design decisions |
+| Internationalization | Custom dictionary (`src/lib/i18n/`) | — | No `next-intl`; cookie-based locale, see Phase 6 design decisions |
 | Charts | Recharts | v2 | Progress chart (player profile, shared profile) and coach utilization bar chart (dashboard) |
 | Database | Supabase (PostgreSQL) | cloud | Hosted, free tier |
 | Auth | Supabase Auth | via `@supabase/ssr` | Cookie-based sessions |
-| Payments | Stripe | — | Deferred — see `docs/product.md` Phase 6 |
+| Payments | Stripe | — | Deferred — see `docs/product.md` Phase 7 |
 | Deploy | Vercel | — | Auto-deploy on push to `main` |
 | Cron jobs | Vercel Cron | — | Playtomic sync (Phase 4C, not yet built) |
-| Native app | React Native (Expo) | — | Phase 7 |
+| Native app | React Native (Expo) | — | Phase 8 |
 
 ---
 
@@ -27,6 +29,7 @@ Technical design, database schema, and engineering decisions.
 ```
 organizations                    (optional — later phase, multi-coach academies)
 └── coaches                      (primary unit — the paying customer)
+    │                            (brand_name / brand_logo_url / brand_primary_color — Phase 6)
     ├── players
     │   ├── player_snapshots     (physical + performance history over time)
     │   ├── tournament_results   (results per player per tournament/competition)
@@ -51,7 +54,7 @@ organizations                    (optional — later phase, multi-coach academie
 
 | Table | Description | Key fields |
 |---|---|---|
-| `coaches` | The paying user of the system | `email`, `full_name`, `plan`, `org_id` |
+| `coaches` | The paying user of the system | `email`, `full_name`, `plan`, `org_id`, `brand_name`, `brand_logo_url`, `brand_primary_color` (last three added Phase 6) |
 | `organizations` | Academy grouping coaches (optional) | `name`, `owner_id` |
 | `players` | Coach's players | `full_name`, `birth_date`, `dominant_hand`, `level`, `weight_kg`, `height_cm`, `share_token`, `share_enabled` |
 | `player_snapshots` | Physical + performance at a point in time | `recorded_at`, `weight_kg`, `height_cm`, `endurance_score`, `speed_score`, `strength_score`, `technique_score` |
@@ -87,7 +90,7 @@ organizations                    (optional — later phase, multi-coach academie
 
 **Plan ↔ reality link:** `plan_sessions.session_id` starts NULL. `linkSessionToPlan()` fills this FK and flips status to `'done'` — this action exists but has **no UI trigger yet** (no button on the session-detail page calls it). `markPlanSessionSkipped()` is fully wired from the plan detail page.
 
-**Shareable player profile:** `players.share_token UUID DEFAULT gen_random_uuid()` and `players.share_enabled BOOLEAN DEFAULT false`. Public route `/share/player/[token]` reads only `id, full_name, level, share_enabled` from `players` plus related snapshots/attendance/results — no auth required. RLS policy `"public: shared player profile"` allows SELECT on `players` WHERE `share_enabled = true`, with no `auth.uid()` check, coexisting with the normal `"coach: own players"` policy (Postgres combines multiple permissive policies with OR).
+**Shareable player profile:** `players.share_token UUID DEFAULT gen_random_uuid()` and `players.share_enabled BOOLEAN DEFAULT false`. Public route `/share/player/[token]` reads only `id, full_name, level, share_enabled` from `players` plus related snapshots/attendance/results — no auth required. RLS policy `"public: shared player profile"` allows SELECT on `players` WHERE `share_enabled = true`, with no `auth.uid()` check, coexisting with the normal `"coach: own players"` policy (Postgres combines multiple permissive policies with OR). As of Phase 6, this page also calls `get_share_branding()` to render the coach's brand instead of a hardcoded "pctmt" — see below.
 
 ### Table Reference — Phase 4C (Playtomic integration) — schema applied, logic not built
 
@@ -119,11 +122,26 @@ Phase 5 was driven by hands-on coach feedback rather than a pre-planned spec. It
 
 **Tournaments → "Competencias" reframe:** the existing `tournaments` / `tournament_results` tables and the `/tournaments` routes already matched the right data model (log where a player competed externally and what they achieved — not a bracket the coach runs). Only the UI copy was wrong, implying the coach organizes the event. Phase 5 changed all user-facing text ("Torneos" → "Competencias", "+ Nuevo torneo" → "+ Nueva competencia," etc.) without renaming the table, columns, routes, or Server Action names — see Design Decisions below for why.
 
+### Table Reference — Phase 6 (theming, language, branding) ✅ applied
+
+Phase 6 added no new tables — only three columns on `coaches` and one narrow lookup function. Theme and language preferences are deliberately **not** stored in the database; see Design Decisions below for why.
+
+| Table/column/function | Description | Key fields |
+|---|---|---|
+| `coaches.brand_name` | Display name shown instead of "pctmt" | `text`, nullable |
+| `coaches.brand_logo_url` | Logo shown instead of the pctmt wordmark | `text`, nullable |
+| `coaches.brand_primary_color` | Accent color (hex) used across the coach's dashboard and shared pages | `text not null default '#16a34a'` |
+| `get_share_branding(p_token text)` | `SECURITY DEFINER` SQL function — returns only `brand_name`/`brand_logo_url`/`brand_primary_color` for the coach owning the share-enabled player matching `p_token` | granted to `anon, authenticated` |
+
+**Why a function instead of a public SELECT policy on `coaches`:** the public share page needs to read the *owning coach's* branding, but RLS is row-level, not column-level — a public policy permissive enough to read `brand_name` would also expose `email`, `plan`, and every other column on that row to anonymous visitors. `get_share_branding()` runs as `SECURITY DEFINER` (bypassing RLS internally) but only ever returns the three branding columns, narrowing the public surface to exactly what the share page needs. `p_token` is compared against `players.share_token::text` — the column is `uuid`, so the cast is required when comparing against the function's `text` parameter.
+
 ### Row Level Security
 
 RLS is enabled on all tables. Every policy is scoped to `auth.uid()` so a coach can only read and write their own data. This is enforced at the database level — application bugs cannot cause cross-coach data leakage.
 
 **Exception — shared player profiles:** `players` has an additional SELECT policy with no `auth.uid()` check, gated by `share_enabled = true`. Column-level restriction (only exposing safe fields) is enforced in the application query, not by RLS — RLS controls rows, not columns.
+
+**Exception — shared branding (Phase 6):** rather than adding a second permissive policy on `coaches` (which would have the same column-leak problem described above), branding exposure for anonymous visitors goes through `get_share_branding()`, a `SECURITY DEFINER` function — see the Phase 6 table reference above. This is the preferred pattern going forward whenever a public page needs *some* fields from an otherwise-private table: a narrow function, not a wider RLS policy.
 
 **Junction tables without a direct `coach_id` column** (`session_players`, `session_blocks`, `tournament_results`) are scoped via a subquery against their parent's `coach_id` — e.g. `session_id in (select id from sessions where coach_id = auth.uid())`. `tactic_boards` has its own direct `coach_id` column instead, since a board isn't strictly a child of any other coach-owned row (it can exist with no `strategy_id` at all).
 
@@ -134,8 +152,9 @@ Migration files:
 - `supabase/migrations/20260615000002_phase4a_calendar_blocks.sql` — Phase 4A ✅ applied 2026-06-20
 - `supabase/migrations/20260615000003_phase4b_plans_sharing.sql` — Phase 4B ✅ applied 2026-06-20
 - `supabase/migrations/20260615000004_phase4c_playtomic.sql` — Phase 4C ✅ applied 2026-06-20 (schema only — no sync logic built yet)
-- `supabase/migrations/20260622000005_tactic_boards.sql` — Phase 5 ⚠️ written, **apply manually** before using `/boards`
-- `supabase/migrations/20260623000006_session_blocks_completed.sql` — Phase 5 ⚠️ written, **apply manually** before using the session blocks checklist
+- `supabase/migrations/20260622000005_tactic_boards.sql` — Phase 5 ✅ applied
+- `supabase/migrations/20260623000006_session_blocks_completed.sql` — Phase 5 ✅ applied
+- `supabase/migrations/20260623000007_phase6_theming_branding.sql` — Phase 6 ✅ applied 2026-06-23 (initial version had a type bug — `share_token` is `uuid`, compared against a `text` param without a cast; fixed same day before causing any production impact, since the migration hadn't been run yet when caught)
 
 Keeping migrations separate makes rollback safe and keeps git history readable.
 
@@ -193,6 +212,13 @@ All user-initiated mutations use Next.js Server Actions. Background jobs (Playto
 | `src/app/actions/boards.ts` | `createBoard`, `saveBoardData`, `renameBoard`, `deleteBoard` |
 | `src/app/actions/sessionBlocks.ts` | `addBlockToSession`, `removeSessionBlock`, `toggleSessionBlockCompleted`, `reorderSessionBlock` |
 
+**Server Actions — Phase 6 (live):**
+
+| File | Actions |
+|---|---|
+| `src/app/actions/preferences.ts` | `setLocale(locale)` — sets the `pctmt-lang` cookie (no DB write; locale is a request-time preference, not user data) |
+| `src/app/actions/branding.ts` | `updateBranding(formData)` — validates the hex color (falls back to the default green on a bad value) and writes `brand_name`/`brand_logo_url`/`brand_primary_color` on `coaches`, then `revalidatePath('/', 'layout')` so the sidebar/topbar pick up the change immediately |
+
 **Route Handlers — Phase 4C (not yet built):**
 
 | File | Purpose |
@@ -207,6 +233,13 @@ Supabase client files:
 | `src/lib/supabase/client.ts` | Client components | Browser-side queries |
 | `src/lib/supabase/server.ts` | Server components, Server Actions | Server-side queries |
 | `src/lib/supabase/middleware.ts` | `src/middleware.ts` | Session refresh + public route exemption (`/login`, `/register`, `/share`) |
+
+i18n files (Phase 6):
+
+| File | Purpose |
+|---|---|
+| `src/lib/i18n/dictionaries.ts` | `es`/`en` dictionaries + the `Dictionary` interface. Deliberately typed as plain `string` fields (not inferred literals from the `es` object) — see Design Decisions below for why that distinction mattered |
+| `src/lib/i18n/getLocale.ts` | Server helper — reads the `pctmt-lang` cookie, falls back to `es` |
 
 ---
 
@@ -230,6 +263,12 @@ All pages are Server Components by default. Client Components (`'use client'`) a
 | `CoachHoursChart` | Recharts BarChart (requires browser APIs); pure presentation, all aggregation happens server-side in the dashboard page |
 | `TacticBoardEditor` | Pointer-event drag/drop canvas (SVG) with debounced autosave — see pattern below |
 | `SessionBlocksPanel` | Optimistic local state for add/remove/reorder/complete, each persisted individually via a Server Action call in `startTransition` — see pattern below |
+| `ThemeToggle` (Phase 6) | Reads/writes `document.documentElement.classList` and `localStorage` directly — no server round-trip, since theme has no server-rendered dependency once the no-flash script in the root layout has run |
+| `LanguageSwitcher` (Phase 6) | `<select>` that calls the `setLocale` Server Action inside `useTransition`, then `router.refresh()` so server-rendered chrome (sidebar/topbar/settings) re-renders in the new language |
+| `MobileNav` (Phase 6) | Owns the open/closed state for the mobile sidebar drawer (`useState`); renders a second `<Sidebar>` instance inside the drawer rather than sharing DOM with the desktop one |
+| `Sidebar` (Phase 6) | Needs `usePathname()` for active-link highlighting, so it's a client component even though its content (nav groups, labels) is plain data computed server-side and passed in as a prop |
+
+**Server components added in Phase 6:** `src/app/(dashboard)/layout.tsx` (fetches the user, coach branding, and locale once; renders the desktop sidebar + `TopBar` + `{children}`) and `src/components/layout/TopBar.tsx` (composes the two client widgets above with server-rendered text and the logout form).
 
 ### Supabase join typing pattern
 
@@ -283,6 +322,30 @@ The tactical whiteboard needed touch-friendly drag/drop on an SVG court without 
 ### Optimistic local state for a non-form server-synced list (`SessionBlocksPanel`)
 
 Unlike `AttendanceToggle` (a single boolean), `SessionBlocksPanel` manages an ordered list with adds, removes, reorders, and a completed flag — all from tap targets, no typing. Each mutation follows the same shape: update local `useState` immediately (so the tap feels instant), then call the matching Server Action inside `startTransition`. The one case requiring a rollback is `handleAdd`: a new row is given a temporary client-generated id, appended optimistically, then replaced with the real id returned by `addBlockToSession()` — or removed entirely if the action reports failure. Reordering swaps `sort_order` between two adjacent rows and persists both with two separate Server Action calls, rather than batching, since this table has no bulk-update Server Action and the UI only ever swaps one pair at a time (up/down buttons, not free drag-reorder).
+
+### CSS-variable theming with a class-based dark mode (Phase 6)
+
+Tailwind v4's `@theme inline` directive turns root-level CSS custom properties into utility classes (the original boilerplate already did this for `--background`/`--foreground`, generating `bg-background`/`text-foreground`). Phase 6 extended that same mechanism with a small shadcn-style palette — `background`, `foreground`, `card`, `card-foreground`, `border`, `muted`, `muted-foreground`, `primary`, `primary-foreground` — each defined once in `:root` (light values) and once under a `.dark` selector (dark values). Every page then uses the semantic class (`bg-card`, `border-border`, `text-muted-foreground`) instead of a literal Tailwind color (`bg-white`, `border-gray-100`, `text-gray-500`), so the whole app reacts to one class toggle on `<html>`.
+
+**No `dark:` variant classes are used anywhere** — there was no need to switch Tailwind's dark-mode strategy or add a `@custom-variant dark` directive, since the color *swap* happens at the CSS-variable level, not via conditional utility classes. This kept the change to a single `globals.css` rewrite plus a mechanical find-and-replace of color classes across pages, rather than doubling every color class in the codebase.
+
+**No-flash toggle, no library:** a small inline script (`next/script` with `strategy="beforeInteractive"` in the root layout) reads `localStorage.getItem('pctmt-theme')` (falling back to `prefers-color-scheme`) and toggles the `.dark` class before first paint. `ThemeToggle` reads/writes the same `localStorage` key and toggles the same class directly — no React context, no provider component, no `next-themes` dependency. This was a deliberate scope call: a full theme-context abstraction (with `system`/`light`/`dark` modes, SSR-safe reads, etc.) wasn't needed for a single on/off toggle with no per-component theme awareness beyond CSS variables.
+
+**Per-coach brand color overrides `--primary` via inline style:** the `(dashboard)` layout and the public share page both set `style={{ '--primary': brandColor }}` on their outermost wrapper. Because CSS custom properties cascade, this single inline override replaces the `:root`/`.dark` value of `--primary` for every descendant, without needing to thread the color through props or pick a different mechanism for light vs dark mode.
+
+### Cookie-based locale without next-intl (Phase 6)
+
+The language switcher needed server-rendered, hydration-safe translated text in `Sidebar`/`TopBar`/`/settings` — and most of those are small, fixed sets of UI strings (nav labels, button text), not the entire app's copy. Given that scope, `next-intl`'s routing-based locale model (URL prefixes, middleware rewrites, message-file conventions) was more machinery than the problem needed. The simpler approach: a plain `Locale = 'es' | 'en'` cookie (`pctmt-lang`), a `getLocale()` server helper that reads it (defaulting to `es`), and a `dictionaries: Record<Locale, Dictionary>` object imported directly wherever needed. Server Components read the cookie and pick the dictionary themselves — no provider, no context. `LanguageSwitcher` is the one client piece, since changing the cookie needs a Server Action call followed by `router.refresh()` to re-render server-rendered text in the new language.
+
+**Why `Dictionary` is declared as an explicit interface, not `typeof dictionaries['es']`:** the first cut typed `Dictionary` by inferring it from the Spanish object's literal string types (e.g. `group_main: 'Principal'`), which meant the English object — whose strings are naturally different literals (`'Main'`) — failed to satisfy that type at build time ("two different types with this name exist, but they are unrelated"). The fix was an explicit interface with `string` fields throughout. Worth remembering for any future dictionary-style object: infer-from-one-instance only works when every instance is structurally *and* literally identical, which defeats the purpose of having more than one locale.
+
+**Deliberately out of scope:** the dictionary currently covers navigation, topbar/header chrome, and the settings page only. The rest of the app's UI strings remain hardcoded Spanish, same as before Phase 6. Extending coverage to every page is tracked as a Phase 7 item rather than attempted in one pass — see `product.md`.
+
+### Shared `(dashboard)` layout replacing per-page headers (Phase 6)
+
+Every page under `(dashboard)/` used to render its own `<header>` with a hardcoded "pctmt" wordmark, a single "← Dashboard"-style back link, and a logout form — copy-pasted across roughly 30 files with no shared layout at all. Phase 6 added `src/app/(dashboard)/layout.tsx`, a Server Component that fetches the user, the coach's branding, and the locale once, then renders a fixed desktop sidebar (`Sidebar`, grouped by section) and a sticky `TopBar` (brand, language switcher, theme toggle, name, logout) around `{children}`. Every page file had its own `<header>` and outer `min-h-screen bg-gray-50` wrapper removed, replaced with just the page's own `<main>` content — and a short breadcrumb-style `Link` back to the parent list (e.g. "← Jugadores", "← {player name}") where the old header's back link had useful context beyond "back to Dashboard."
+
+This was done as a full pass across every list and detail page in the same phase (not partially), specifically to avoid the double-header look a partial rollout would have produced — see Design Decisions below.
 
 ---
 
@@ -347,3 +410,12 @@ The `tournaments` data model already matched the real use case (log where a play
 
 **2026-06-23 — `session_blocks.completed` added as a single boolean, no per-block timestamp**
 The live-session checklist only needed a binary done/not-done toggle per block, tappable mid-class on a tablet. A `completed_at` timestamp was considered (useful for later analytics like "how long did this block actually take") but deferred — it adds a second field to keep in sync on every toggle for a use case that doesn't exist yet. Easy to add as a follow-up migration if a future feature needs it.
+
+**2026-06-23 — Theme and locale are client-side/cookie preferences, not `coaches` columns**
+Both could have been stored on `coaches` (synced across devices) instead of `localStorage`/a cookie. They weren't, deliberately: theme is a pure rendering preference with zero server-side meaning, so a DB round-trip on every toggle (or a fetch-before-render on every page) would add latency for no behavioral difference. Locale is read server-side via the cookie specifically so server-rendered chrome doesn't flash in the wrong language — using a `coaches` column would have required an extra query on every request that a cookie read avoids. Branding, by contrast, *is* a `coaches` column, because it must be visible to other people (players viewing the public share page) who have no `localStorage` or cookie of the coach's to read.
+
+**2026-06-23 — `get_share_branding()` SECURITY DEFINER function instead of relaxing `coaches` RLS**
+Considered and rejected: a second permissive SELECT policy on `coaches`, scoped like the existing `players` share-profile exception. Rejected because RLS is row-level — a policy permissive enough to expose `brand_name` to anonymous visitors would expose the entire matched row, including `email` and `plan`. A `SECURITY DEFINER` function sidesteps this by hardcoding exactly which three columns it returns, regardless of what's added to `coaches` in the future. This is now the intended pattern for any future "expose a sliver of an otherwise-private table publicly" need, rather than writing a new RLS policy each time.
+
+**2026-06-23 — Full shared-layout migration done in one pass, not incrementally per page**
+The first commit introducing `(dashboard)/layout.tsx` only updated the dashboard, calendar, and other top-level list pages — nested `[id]`/`edit`/`new`/`snapshots` pages still rendered their own old header underneath the new one, producing a visible double-header until the second pass caught up. Once noticed, every remaining page was migrated in the same work session rather than left for a later phase, specifically to avoid shipping the double-header state to production. The lesson generalized: introducing a shared layout that *replaces* something every page already renders needs the old thing removed everywhere in the same change, not deprecated gradually — a partially-migrated shared layout looks more broken than no shared layout at all.
