@@ -63,7 +63,7 @@ export default async function TournamentPage({ params }: { params: Promise<{ id:
           pctmt
         </Link>
         <Link href="/tournaments" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">
-          ← Torneos
+          ← Competencias
         </Link>
       </header>
 
@@ -103,7 +103,8 @@ export default async function TournamentPage({ params }: { params: Promise<{ id:
 
         {/* Results */}
         <div>
-          <h2 className="text-base font-semibold text-gray-900 mb-4">Resultados</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-1">Resultados de tus alumnos</h2>
+          <p className="text-xs text-gray-400 mb-4">Quién compitió, con quién, y qué tan lejos llegó.</p>
 
           {results && results.length > 0 ? (
             <ul className="space-y-3 mb-6">
