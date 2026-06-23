@@ -33,6 +33,12 @@ type ResultRow = {
   tournaments: { name: string; start_date: string } | null
 }
 
+type BrandRow = {
+  brand_name: string | null
+  brand_logo_url: string | null
+  brand_primary_color: string | null
+}
+
 const ROUND_LABEL: Record<string, string> = {
   winner: 'Campeón',
   final: 'Finalista',
@@ -59,6 +65,14 @@ export default async function SharedPlayerPage({ params }: { params: Promise<{ t
   if (error || !player) notFound()
 
   const playerId = player.id
+
+  // Branding fields only — see get_share_branding() in the phase 6 migration.
+  const { data: brand } = await supabase
+    .rpc('get_share_branding', { p_token: token })
+    .maybeSingle() as { data: BrandRow | null }
+
+  const brandLabel = brand?.brand_name?.trim() || 'pctmt'
+  const brandColor = brand?.brand_primary_color || '#16a34a'
 
   const { data: realSnapshots } = await supabase
     .from('player_snapshots')
@@ -88,18 +102,22 @@ export default async function SharedPlayerPage({ params }: { params: Promise<{ t
     .limit(5) as { data: ResultRow[] | null }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white border-b border-gray-100 px-6 py-4 text-center">
-        <span className="font-semibold text-gray-900 tracking-tight">pctmt</span>
+    <div className="min-h-screen bg-background" style={{ '--primary': brandColor } as React.CSSProperties}>
+      <header className="bg-card border-b border-border px-6 py-4 flex items-center justify-center gap-2">
+        {brand?.brand_logo_url ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={brand.brand_logo_url} alt={brandLabel} className="h-6 w-auto" />
+        ) : null}
+        <span className="font-semibold text-foreground tracking-tight">{brandLabel}</span>
       </header>
 
       <main className="max-w-lg mx-auto px-6 py-10 space-y-8">
 
         {/* Header */}
         <div className="text-center">
-          <h1 className="text-2xl font-semibold text-gray-900">{player.full_name}</h1>
+          <h1 className="text-2xl font-semibold text-foreground">{player.full_name}</h1>
           {player.level && (
-            <span className="inline-block mt-2 px-3 py-1 text-xs font-medium bg-gray-100 text-gray-600 rounded-full">
+            <span className="inline-block mt-2 px-3 py-1 text-xs font-medium bg-muted text-muted-foreground rounded-full">
               {LEVEL_LABEL[player.level] ?? player.level}
             </span>
           )}
@@ -107,36 +125,36 @@ export default async function SharedPlayerPage({ params }: { params: Promise<{ t
 
         {/* Progress chart */}
         {realSnapshots && realSnapshots.length >= 2 && (
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm px-6 py-5">
-            <h2 className="text-base font-semibold text-gray-900 mb-4">Progreso</h2>
+          <div className="bg-card border border-border rounded-2xl shadow-sm px-6 py-5">
+            <h2 className="text-base font-semibold text-foreground mb-4">Progreso</h2>
             <ProgressChart snapshots={realSnapshots} playerName={player.full_name} />
           </div>
         )}
 
         {/* Attendance rate */}
         {attendanceRate !== null && (
-          <div className="bg-white border border-gray-100 rounded-2xl shadow-sm px-6 py-5 text-center">
-            <p className="text-3xl font-bold text-gray-900">{attendanceRate}%</p>
-            <p className="text-xs text-gray-400 mt-1">Asistencia en los últimos 30 días</p>
+          <div className="bg-card border border-border rounded-2xl shadow-sm px-6 py-5 text-center">
+            <p className="text-3xl font-bold text-foreground">{attendanceRate}%</p>
+            <p className="text-xs text-muted-foreground mt-1">Asistencia en los últimos 30 días</p>
           </div>
         )}
 
         {/* Tournament results */}
         {results && results.length > 0 && (
           <div>
-            <h2 className="text-base font-semibold text-gray-900 mb-3">Torneos recientes</h2>
+            <h2 className="text-base font-semibold text-foreground mb-3">Torneos recientes</h2>
             <ul className="space-y-2">
               {results.map((r, i) => (
-                <li key={i} className="bg-white border border-gray-100 rounded-2xl shadow-sm px-5 py-4">
+                <li key={i} className="bg-card border border-border rounded-2xl shadow-sm px-5 py-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{r.tournaments?.name ?? 'Torneo'}</p>
+                      <p className="text-sm font-medium text-foreground">{r.tournaments?.name ?? 'Torneo'}</p>
                       {r.tournaments?.start_date && (
-                        <p className="text-xs text-gray-400 mt-0.5">{formatShortDate(r.tournaments.start_date)}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{formatShortDate(r.tournaments.start_date)}</p>
                       )}
                     </div>
                     {r.final_round && (
-                      <span className="text-xs font-medium px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full">
+                      <span className="text-xs font-medium px-2 py-0.5 bg-primary/10 text-primary rounded-full">
                         {ROUND_LABEL[r.final_round] ?? r.final_round}
                       </span>
                     )}
@@ -147,8 +165,8 @@ export default async function SharedPlayerPage({ params }: { params: Promise<{ t
           </div>
         )}
 
-        <p className="text-center text-xs text-gray-300 pt-4">
-          Progreso compartido por tu entrenador · pctmt
+        <p className="text-center text-xs text-muted-foreground pt-4">
+          Progreso compartido por tu entrenador · {brandLabel}
         </p>
 
       </main>
