@@ -13,6 +13,8 @@ comment on column coaches.brand_primary_color is 'Hex color used as the accent/p
 -- coaches who have at least one share-enabled player matching the given
 -- token. Avoids exposing the full coaches row (email, plan, etc.) to
 -- anonymous visitors, since RLS is row-level and can't restrict columns.
+-- share_token is uuid on players, so it's cast to text here to compare
+-- against the text param coming from the route's [token] segment.
 create or replace function get_share_branding(p_token text)
 returns table (
   brand_name text,
@@ -26,7 +28,7 @@ as $$
   select c.brand_name, c.brand_logo_url, c.brand_primary_color
   from coaches c
   join players p on p.coach_id = c.id
-  where p.share_token = p_token
+  where p.share_token::text = p_token
     and p.share_enabled = true
   limit 1;
 $$;
