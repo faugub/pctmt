@@ -4,7 +4,7 @@ import { deleteTournament } from '@/app/actions/tournaments'
 
 export function DeleteTournamentButton({ id, name }: { id: string; name: string }) {
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    if (!confirm(`¿Eliminar el torneo "${name}"? Se borrarán todos sus resultados.`)) {
+    if (!confirm(`¿Eliminar la competencia "${name}"? Se borrarán todos sus resultados.`)) {
       e.preventDefault()
     }
   }
@@ -15,7 +15,7 @@ export function DeleteTournamentButton({ id, name }: { id: string; name: string 
         type="submit"
         className="w-full py-2.5 text-sm text-red-500 border border-red-100 rounded-lg hover:bg-red-50 transition-colors"
       >
-        Eliminar torneo
+        Eliminar competencia
       </button>
     </form>
   )
