@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { AttendanceToggle } from '@/components/ui/AttendanceToggle'
 import { DeleteSessionButton } from '@/components/ui/DeleteSessionButton'
+import { SessionBlocksPanel, type LibraryBlock, type SessionBlockRow } from '@/components/ui/SessionBlocksPanel'
 
 const TYPE_LABEL: Record<string, string> = {
   technical: 'Técnica',
@@ -24,6 +25,14 @@ type SessionPlayer = {
   players: { full_name: string } | null
 }
 
+type RawSessionBlock = {
+  id: string
+  sort_order: number
+  completed: boolean
+  duration_override: number | null
+  training_blocks: { title: string; block_type: string; duration_min: number | null } | null
+}
+
 export default async function SessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
@@ -42,6 +51,28 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
     .from('session_players')
     .select('player_id, attended, players(full_name)')
     .eq('session_id', id) as { data: SessionPlayer[] | null }
+
+  const { data: rawSessionBlocks } = await supabase
+    .from('session_blocks')
+    .select('id, sort_order, completed, duration_override, training_blocks(title, block_type, duration_min)')
+    .eq('session_id', id)
+    .order('sort_order', { ascending: true }) as { data: RawSessionBlock[] | null }
+
+  const { data: library } = await supabase
+    .from('training_blocks')
+    .select('id, title, block_type, duration_min')
+    .order('created_at', { ascending: false }) as { data: LibraryBlock[] | null }
+
+  const sessionBlocks: SessionBlockRow[] = (rawSessionBlocks ?? [])
+    .filter((r) => r.training_blocks !== null)
+    .map((r) => ({
+      id: r.id,
+      title: r.training_blocks!.title,
+      block_type: r.training_blocks!.block_type,
+      duration_min: r.duration_override ?? r.training_blocks!.duration_min,
+      completed: r.completed,
+      sort_order: r.sort_order,
+    }))
 
   const attended = sessionPlayers?.filter((sp) => sp.attended).length ?? 0
   const total = sessionPlayers?.length ?? 0
@@ -86,6 +117,12 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
               <span className="text-sm font-medium text-gray-900 text-right">{value}</span>
             </div>
           ))}
+        </div>
+
+        {/* Blocks */}
+        <div>
+          <h2 className="text-base font-semibold text-gray-900 mb-4">Bloques de la sesión</h2>
+          <SessionBlocksPanel sessionId={id} initialBlocks={sessionBlocks} library={library ?? []} />
         </div>
 
         {/* Attendance */}
