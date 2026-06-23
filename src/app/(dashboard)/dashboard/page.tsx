@@ -58,7 +58,7 @@ export default async function DashboardPage() {
     .order('session_date', { ascending: false })
     .limit(3)
 
-  // Upcoming tournaments (start_date >= today)
+  // Upcoming competitions (start_date >= today)
   const today = new Date().toISOString().split('T')[0]
   const { data: upcomingTournaments } = await supabase
     .from('tournaments')
@@ -103,12 +103,12 @@ export default async function DashboardPage() {
   const hasAnyHours = hoursData.some((m) => m.hours > 0)
 
   const stats = [
-    { label: 'Jugadores',   value: playerCount.count ?? 0,     href: '/players',     emoji: '🎾' },
-    { label: 'Sesiones',    value: sessionCount.count ?? 0,    href: '/sessions',    emoji: '📋' },
-    { label: 'Torneos',     value: tournamentCount.count ?? 0, href: '/tournaments', emoji: '🏆' },
-    { label: 'Estrategias', value: strategyCount.count ?? 0,   href: '/strategies',  emoji: '🧠' },
-    { label: 'Bloques',     value: blockCount.count ?? 0,      href: '/blocks',      emoji: '🏃' },
-    { label: 'Pizarras',    value: boardCount.count ?? 0,      href: '/boards',      emoji: '🖊️' },
+    { label: 'Jugadores',    value: playerCount.count ?? 0,     href: '/players',     emoji: '🎾' },
+    { label: 'Sesiones',     value: sessionCount.count ?? 0,    href: '/sessions',    emoji: '📋' },
+    { label: 'Competencias', value: tournamentCount.count ?? 0, href: '/tournaments', emoji: '🏆' },
+    { label: 'Estrategias',  value: strategyCount.count ?? 0,   href: '/strategies',  emoji: '🧠' },
+    { label: 'Bloques',      value: blockCount.count ?? 0,      href: '/blocks',      emoji: '🏃' },
+    { label: 'Pizarras',     value: boardCount.count ?? 0,      href: '/boards',      emoji: '🖊️' },
   ]
 
   return (
@@ -237,11 +237,11 @@ export default async function DashboardPage() {
             )}
           </div>
 
-          {/* Upcoming tournaments */}
+          {/* Upcoming competitions */}
           <div className="bg-white border border-gray-100 rounded-2xl shadow-sm px-5 py-4">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-gray-900">Próximos torneos</h2>
-              <Link href="/tournaments" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">Ver todos</Link>
+              <h2 className="text-base font-semibold text-gray-900">Próximas competencias</h2>
+              <Link href="/tournaments" className="text-xs text-gray-400 hover:text-gray-700 transition-colors">Ver todas</Link>
             </div>
             {upcomingTournaments && upcomingTournaments.length > 0 ? (
               <ul className="space-y-3">
@@ -261,7 +261,7 @@ export default async function DashboardPage() {
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-gray-400">No hay torneos próximos.</p>
+              <p className="text-sm text-gray-400">No hay competencias próximas.</p>
             )}
           </div>
 
