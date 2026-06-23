@@ -27,6 +27,9 @@ The product is built mobile/tablet-first — coaches use it courtside, often on 
 | **Shareable player profile** | Public read-only link a coach can send a player — progress chart, attendance, competition results, no login required |
 | **Competencias** | Tracks where a player competed externally and what they achieved (not a bracket organizer — the coach doesn't run the tournament) |
 | **Dashboard** | Coach utilization (hours coached per month), recent sessions, upcoming competitions |
+| **Theme** | Light/dark toggle in the topbar, persisted in `localStorage`, no flash on load |
+| **Language** | ES/EN switcher in the topbar, persisted in a cookie, applied to navigation/chrome and the settings page |
+| **Branding** | Each coach sets a brand name, logo URL, and primary color from `/settings` — shown in their own sidebar/topbar and on their players' public shared profiles |
 
 ---
 
@@ -35,8 +38,9 @@ The product is built mobile/tablet-first — coaches use it courtside, often on 
 | Layer | Technology |
 |---|---|
 | Frontend | Next.js 16 (App Router) + TypeScript + React 19 |
-| Styling | Tailwind CSS v4 |
+| Styling | Tailwind CSS v4 — semantic CSS-variable tokens (`bg-card`, `text-foreground`, etc.) driving light/dark mode via a `.dark` class on `<html>` |
 | Charts | Recharts |
+| Internationalization | Custom cookie-based dictionary (`src/lib/i18n/`) — no external i18n library |
 | Backend / DB | Supabase (PostgreSQL + Auth, RLS-enforced) |
 | Deployment | Vercel (auto-deploy on push to `main`) |
 
@@ -53,6 +57,7 @@ pctmt/
 │   ├── app/
 │   │   ├── (auth)/           # Login, register
 │   │   ├── (dashboard)/      # Main app — protected routes
+│   │   │   ├── layout.tsx    # Shared chrome: sidebar + topbar (theme/language/branding), wraps every page below
 │   │   │   ├── players/
 │   │   │   ├── sessions/
 │   │   │   ├── calendar/
@@ -61,11 +66,16 @@ pctmt/
 │   │   │   ├── plans/
 │   │   │   ├── strategies/
 │   │   │   ├── boards/       # Tactical whiteboard
-│   │   │   └── tournaments/  # "Competencias" — UI copy reframed, routes/table names unchanged
-│   │   ├── share/player/[token]/  # Public profile, no auth
+│   │   │   ├── tournaments/  # "Competencias" — UI copy reframed, routes/table names unchanged
+│   │   │   └── settings/     # Branding (name/logo/color) — theme + language live in the topbar instead
+│   │   ├── share/player/[token]/  # Public profile, no auth — renders the coach's branding
 │   │   └── actions/          # Server Actions, one file per domain
-│   ├── components/ui/        # Client components (forms, toggles, the whiteboard editor, etc.)
-│   └── lib/supabase/         # Client/server Supabase helpers + middleware
+│   ├── components/
+│   │   ├── ui/                # Forms, toggles, the whiteboard editor, etc.
+│   │   └── layout/             # Sidebar, TopBar, MobileNav — the (dashboard) chrome
+│   └── lib/
+│       ├── supabase/          # Client/server Supabase helpers + middleware
+│       └── i18n/               # Dictionaries (es/en) + cookie-based locale reader
 ├── supabase/
 │   └── migrations/           # SQL, applied manually in order — see docs/runbook.md
 └── public/
