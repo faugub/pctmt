@@ -117,6 +117,8 @@ NEXT_PUBLIC_SITE_URL=https://pctmt-azure.vercel.app
 
 `src/components/ui/SharePanel.tsx` currently hardcodes `https://pctmt-azure.vercel.app` directly in the component (see the `SITE_URL` constant with a `TODO` comment). Move this to an env var before the domain changes, or the shared links will silently point to the wrong place.
 
+**No new env vars needed for Phase 6** (theme/language/branding) — theme and locale are `localStorage`/cookie only, and branding reads/writes through the existing Supabase client.
+
 ### Auth settings
 
 - **Email confirmation:** disabled (re-enable before public launch)
@@ -140,13 +142,11 @@ NEXT_PUBLIC_SITE_URL=https://pctmt-azure.vercel.app
 | `20260615000002_phase4a_calendar_blocks.sql` | Phase 4A | ✅ Applied 2026-06-20 |
 | `20260615000003_phase4b_plans_sharing.sql` | Phase 4B | ✅ Applied 2026-06-20 |
 | `20260615000004_phase4c_playtomic.sql` | Phase 4C | ✅ Applied 2026-06-20 (schema only — no sync code uses these tables yet) |
-| `20260622000005_tactic_boards.sql` | Phase 5 | ⚠️ **Written, not yet confirmed applied** — run this before using `/boards`, or every page in that module will error |
-| `20260623000006_session_blocks_completed.sql` | Phase 5 | ⚠️ **Written, not yet confirmed applied** — run this before using the session blocks checklist on `/sessions/[id]` |
+| `20260622000005_tactic_boards.sql` | Phase 5 | ✅ Applied |
+| `20260623000006_session_blocks_completed.sql` | Phase 5 | ✅ Applied |
+| `20260623000007_phase6_theming_branding.sql` | Phase 6 | ✅ Applied 2026-06-23 — adds `coaches.brand_name/brand_logo_url/brand_primary_color` + `get_share_branding()`. The first version had a `uuid = text` comparison bug in `get_share_branding`; fixed (cast `share_token::text`) before being re-run successfully |
 
-Always apply migrations in order. Never skip a file. The first four are confirmed applied in production; **the last two need to be run manually before their features will work** — check off here once done:
-
-- [ ] `20260622000005_tactic_boards.sql` applied to production
-- [ ] `20260623000006_session_blocks_completed.sql` applied to production
+Always apply migrations in order. Never skip a file. All seven files above are confirmed applied in production as of 2026-06-23.
 
 ---
 
@@ -192,14 +192,16 @@ pctmt/
 │       ├── 20260615000002_phase4a_calendar_blocks.sql   # ✅ applied
 │       ├── 20260615000003_phase4b_plans_sharing.sql     # ✅ applied
 │       ├── 20260615000004_phase4c_playtomic.sql         # ✅ applied (schema only)
-│       ├── 20260622000005_tactic_boards.sql             # ⚠️ apply manually
-│       └── 20260623000006_session_blocks_completed.sql  # ⚠️ apply manually
+│       ├── 20260622000005_tactic_boards.sql             # ✅ applied
+│       ├── 20260623000006_session_blocks_completed.sql  # ✅ applied
+│       └── 20260623000007_phase6_theming_branding.sql   # ✅ applied
 ├── src/
 │   ├── app/
 │   │   ├── (auth)/
 │   │   │   ├── login/           # ✅
 │   │   │   └── register/        # ✅
 │   │   ├── (dashboard)/
+│   │   │   ├── layout.tsx       # ✅ Phase 6 — shared sidebar + topbar (theme/language/branding), wraps every route below
 │   │   │   ├── dashboard/       # Stats, coach utilization chart, recent activity ✅
 │   │   │   ├── players/         # CRUD + snapshots + attendance history + SharePanel ✅
 │   │   │   ├── sessions/        # CRUD + attendance toggle + SessionBlocksPanel ✅
@@ -212,9 +214,9 @@ pctmt/
 │   │   │   │   ├── new/         # Create recurring series ✅
 │   │   │   │   └── [id]/edit/   # Scoped edit (this/future/all) ✅
 │   │   │   ├── plans/           # List, create, detail with phases + timeline ✅
-│   │   │   └── settings/        # Integrations (Playtomic connect) — ⏳ not built (Phase 4C)
+│   │   │   └── settings/        # ✅ Phase 6 — branding (name/logo/color); theme + language live in the topbar instead
 │   │   ├── share/
-│   │   │   └── player/[token]/  # Public player profile, no auth ✅
+│   │   │   └── player/[token]/  # Public player profile, no auth — renders coach branding (Phase 6) ✅
 │   │   ├── api/
 │   │   │   └── playtomic/       # ⏳ not built (Phase 4C)
 │   │   │       ├── sync/
@@ -231,11 +233,17 @@ pctmt/
 │   │   │   ├── plans.ts         # createPlan, updatePlan, deletePlan, addPhase, deletePhase, updatePlanSession, linkSessionToPlan, markPlanSessionSkipped ✅
 │   │   │   ├── sharing.ts       # enablePlayerShare, disablePlayerShare, regenerateShareToken ✅
 │   │   │   ├── boards.ts        # createBoard, saveBoardData, renameBoard, deleteBoard ✅
-│   │   │   └── sessionBlocks.ts # addBlockToSession, removeSessionBlock, toggleSessionBlockCompleted, reorderSessionBlock ✅
-│   │   ├── globals.css
-│   │   ├── layout.tsx
+│   │   │   ├── sessionBlocks.ts # addBlockToSession, removeSessionBlock, toggleSessionBlockCompleted, reorderSessionBlock ✅
+│   │   │   ├── preferences.ts   # ✅ Phase 6 — setLocale(locale) → cookie, no DB write
+│   │   │   └── branding.ts      # ✅ Phase 6 — updateBranding(formData) → coaches.brand_*
+│   │   ├── globals.css          # ✅ Phase 6 — semantic light/dark CSS variables (background/card/border/muted/primary)
+│   │   ├── layout.tsx           # ✅ Phase 6 — no-flash theme init script, reads locale cookie for <html lang>
 │   │   └── page.tsx
 │   ├── components/
+│   │   ├── layout/                            # ✅ Phase 6 — the (dashboard) chrome
+│   │   │   ├── Sidebar.tsx                    # grouped nav, usePathname for active state
+│   │   │   ├── TopBar.tsx                     # brand, language switcher, theme toggle, logout
+│   │   │   └── MobileNav.tsx                  # hamburger + drawer for small screens
 │   │   └── ui/
 │   │       ├── PlayerForm.tsx
 │   │       ├── DeletePlayerButton.tsx
@@ -262,12 +270,17 @@ pctmt/
 │   │       ├── SharePanel.tsx                 # toggle, copy link, regenerate token
 │   │       ├── TacticBoardEditor.tsx          # ✅ — SVG drag/drop court, pointer-capture pattern
 │   │       ├── DeleteBoardButton.tsx          # ✅
-│   │       └── SessionBlocksPanel.tsx         # ✅ — tap-to-add checklist, optimistic state
+│   │       ├── SessionBlocksPanel.tsx         # ✅ — tap-to-add checklist, optimistic state
+│   │       ├── ThemeToggle.tsx                # ✅ Phase 6 — localStorage + classList, no context/provider
+│   │       └── LanguageSwitcher.tsx           # ✅ Phase 6 — setLocale Server Action + router.refresh()
 │   ├── lib/
-│   │   └── supabase/
-│   │       ├── client.ts
-│   │       ├── server.ts
-│   │       └── middleware.ts          # public routes: /login, /register, /share
+│   │   ├── supabase/
+│   │   │   ├── client.ts
+│   │   │   ├── server.ts
+│   │   │   └── middleware.ts          # public routes: /login, /register, /share
+│   │   └── i18n/                               # ✅ Phase 6
+│   │       ├── dictionaries.ts                # es/en dictionaries + Dictionary interface
+│   │       └── getLocale.ts                   # reads pctmt-lang cookie, server-only
 │   └── middleware.ts
 ├── vercel.json              # ⏳ not yet created (needed for Phase 4C cron)
 ├── .env.local               # NOT in git
@@ -288,8 +301,14 @@ pctmt/
 - **`players` has no `email` column**, which Phase 4C's player-matching-by-email design assumes. Will need a small migration when that phase starts.
 - **`deleteSession()` in `actions/sessions.ts` is unused dead code** — superseded by `deleteSeriesOccurrence()` in `actions/series.ts` (Phase 5), which handles both one-off and series sessions through a single scoped function. Safe to delete in a future cleanup pass, just not removed yet to keep the Phase 5 diff focused.
 - **`/tournaments` routes and `Tournament*`-named files are internal-only inconsistencies**, not bugs: the UI says "Competencias" everywhere, but the URL, the database table, and component/action names still say "tournament." See `architecture.md` Phase 5 design decisions for why this wasn't renamed.
+- **Language switcher only covers navigation, chrome, and `/settings`.** Every other page's UI text is still hardcoded Spanish — the dictionary infra (`src/lib/i18n/`) is in place to extend coverage incrementally, see `product.md` Phase 7.
+- **Form components in `components/ui/` still use literal `gray-*`/`white`/colored-pill Tailwind classes**, not the semantic tokens introduced in Phase 6. They render fine inside the new `bg-card` page containers (light cards on either a light or dark page background), but haven't been retrofitted to fully theme-match in dark mode the way the page-level chrome now does.
+- **No logo upload** — `/settings` branding only accepts a logo *URL* (e.g. an image already hosted elsewhere), not a file upload. Acceptable for now since most coaches already have a logo hosted somewhere (Instagram, a personal site); revisit if that assumption proves wrong.
 
 **Closed in Phase 5 (previously listed here):**
 - ~~No UI to attach training blocks to a session~~ — closed by `SessionBlocksPanel`.
 - ~~Deleting a series leaves orphaned sessions behind~~ — closed by `deleteSeries(id, cascade)`.
 - ~~No way to delete "this and future" occurrences of a recurring session~~ — closed by `deleteSeriesOccurrence(sessionId, scope)`.
+
+**Closed in Phase 6 (previously listed here):**
+- ~~No dark mode, no way for a coach to brand the product, every page repeats its own header~~ — closed by the shared `(dashboard)/layout.tsx`, `ThemeToggle`, `LanguageSwitcher`, and `/settings` branding form.
