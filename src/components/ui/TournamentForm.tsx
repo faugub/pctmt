@@ -1,12 +1,5 @@
 'use client'
 
-const ZONES = [
-  { value: 'red',      label: 'Red' },
-  { value: 'midcourt', label: 'Mediocampo' },
-  { value: 'back',     label: 'Fondo' },
-  { value: 'full',     label: 'Campo completo' },
-]
-
 type DefaultValues = {
   name?: string
   start_date?: string
@@ -18,7 +11,7 @@ type DefaultValues = {
 export function TournamentForm({
   action,
   defaultValues = {},
-  submitLabel = 'Crear torneo',
+  submitLabel = 'Crear competencia',
 }: {
   action: (formData: FormData) => Promise<void>
   defaultValues?: DefaultValues
