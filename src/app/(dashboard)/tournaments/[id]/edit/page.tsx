@@ -32,7 +32,7 @@ export default async function EditTournamentPage({ params }: { params: Promise<{
       </header>
 
       <main className="max-w-lg mx-auto px-6 py-10">
-        <h1 className="text-2xl font-semibold text-gray-900 mb-8">Editar torneo</h1>
+        <h1 className="text-2xl font-semibold text-gray-900 mb-8">Editar competencia</h1>
         <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-6">
           <TournamentForm
             action={updateAction}
