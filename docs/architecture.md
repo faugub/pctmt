@@ -10,13 +10,13 @@ Technical design, database schema, and engineering decisions.
 |---|---|---|---|
 | Framework | Next.js | 16.2.9 | App Router, TypeScript |
 | Styling | Tailwind CSS | v4 | Utility-first CSS |
-| Charts | Recharts | v2 | Progress chart in dashboard, player profile, and shared profile |
+| Charts | Recharts | v2 | Progress chart (player profile, shared profile) and coach utilization bar chart (dashboard) |
 | Database | Supabase (PostgreSQL) | cloud | Hosted, free tier |
 | Auth | Supabase Auth | via `@supabase/ssr` | Cookie-based sessions |
-| Payments | Stripe | — | Deferred Phase 5 |
+| Payments | Stripe | — | Deferred — see `docs/product.md` Phase 6 |
 | Deploy | Vercel | — | Auto-deploy on push to `main` |
 | Cron jobs | Vercel Cron | — | Playtomic sync (Phase 4C, not yet built) |
-| Native app | React Native (Expo) | — | Phase 6 |
+| Native app | React Native (Expo) | — | Phase 7 |
 
 ---
 
@@ -25,23 +25,24 @@ Technical design, database schema, and engineering decisions.
 ### Entity Hierarchy
 
 ```
-organizations                    (optional — Phase 5, multi-coach academies)
+organizations                    (optional — later phase, multi-coach academies)
 └── coaches                      (primary unit — the paying customer)
     ├── players
     │   ├── player_snapshots     (physical + performance history over time)
-    │   ├── tournament_results   (results per player per tournament)
+    │   ├── tournament_results   (results per player per tournament/competition)
     │   └── share_token / share_enabled (public shareable profile)
     ├── session_series           (recurring schedule templates)
     │   └── sessions             (concrete instances, series_id + series_index)
     │       ├── session_players  (many-to-many: players ↔ sessions + attendance)
-    │       └── session_blocks   (ordered training blocks assigned to a session)
+    │       └── session_blocks   (ordered training blocks assigned to a session, with completed flag)
     ├── training_blocks          (reusable exercise block library per coach)
     ├── training_plans           (multi-session plans for groups or individuals)
     │   ├── plan_phases          (optional phase groupings within a plan)
     │   └── plan_sessions        (planned session slots; links to real session when it occurs)
-    ├── tournaments
+    ├── tournaments               ("Competencias" in the UI — external competitions a player attended)
     │   └── tournament_results   (results per player per tournament)
     ├── strategies               (play library with court zones and tags)
+    │   └── tactic_boards        (drag/drop court diagrams — tokens + lines, optionally linked to a strategy)
     └── playtomic_connections    (OAuth credentials for Playtomic API — Phase 4C, schema only)
         └── playtomic_bookings   (raw bookings imported from Playtomic — Phase 4C, schema only)
 ```
@@ -56,8 +57,8 @@ organizations                    (optional — Phase 5, multi-coach academies)
 | `player_snapshots` | Physical + performance at a point in time | `recorded_at`, `weight_kg`, `height_cm`, `endurance_score`, `speed_score`, `strength_score`, `technique_score` |
 | `sessions` | Training sessions (concrete instances) | `title`, `session_date`, `duration_min`, `session_type`, `objectives`, `notes`, `series_id`, `series_index` |
 | `session_players` | Attendance per player per session | `session_id`, `player_id`, `attended` |
-| `tournaments` | Registered tournaments | `name`, `start_date`, `end_date`, `location`, `category` |
-| `tournament_results` | Results per player per tournament | `player_id`, `partner_name`, `final_round`, `sets_won`, `sets_lost` |
+| `tournaments` | Registered external competitions ("Competencias" in the UI — see Phase 5 design decisions) | `name`, `start_date`, `end_date`, `location`, `category` |
+| `tournament_results` | Results per player per competition | `player_id`, `partner_name`, `final_round`, `sets_won`, `sets_lost` |
 | `strategies` | Coach's play library | `title`, `court_zone`, `description`, `tags[]` |
 
 ### Table Reference — Phase 4A (calendar + blocks) ✅ applied
@@ -66,13 +67,13 @@ organizations                    (optional — Phase 5, multi-coach academies)
 |---|---|---|
 | `session_series` | Recurring schedule template | `coach_id`, `title`, `session_type`, `recurrence_days int[]`, `start_time`, `duration_min`, `starts_on`, `ends_on`, `category`, `level`, `player_ids uuid[]` |
 | `training_blocks` | Reusable exercise blocks library | `coach_id`, `title`, `block_type` (warmup/technique/physical/tactical/match/cooldown), `description`, `duration_min`, `tags[]`, `strategy_id` (nullable FK) |
-| `session_blocks` | Blocks assigned to a session, ordered | `session_id`, `block_id` (nullable — null means inline/custom), `strategy_id` (nullable), `sort_order`, `custom_notes`, `duration_override` |
+| `session_blocks` | Blocks assigned to a session, ordered | `session_id`, `block_id` (nullable — null means inline/custom), `strategy_id` (nullable), `sort_order`, `custom_notes`, `duration_override`, `completed` (added Phase 5) |
 
-**Recurrence model:** `session_series` stores the schedule template. Concrete `sessions` rows are generated by `generateSessionsForSeries()` on series creation, with `series_id` and `series_index` populated. For open-ended series (no `ends_on`), generation looks 90 days ahead (`OPEN_ENDED_HORIZON_DAYS`) and is idempotent — re-running it only fills in indexes not already present, so it's safe to call again later to extend the horizon. Edit scope ("only the template / future sessions / entire series") is implemented in `updateSeries()`: `'all'` deletes and regenerates every session, `'future'` deletes and regenerates from a given `series_index` onward, `'this'` only updates the template (existing sessions untouched, future generations pick up the change). A separate action, `updateSingleSessionInSeries()`, edits one occurrence's own fields without touching the series at all.
+**Recurrence model:** `session_series` stores the schedule template. Concrete `sessions` rows are generated by `generateSessionsForSeries()` on series creation, with `series_id` and `series_index` populated. For open-ended series (no `ends_on`), generation looks 90 days ahead (`OPEN_ENDED_HORIZON_DAYS`) and is idempotent — re-running it only fills in indexes not already present, so it's safe to call again later to extend the horizon. Edit scope ("only the template / future sessions / entire series") is implemented in `updateSeries()`: `'all'` deletes and regenerates every session, `'future'` deletes and regenerates from a given `series_index` onward, `'this'` only updates the template (existing sessions untouched, future generations pick up the change). A separate action, `updateSingleSessionInSeries()`, edits one occurrence's own fields without touching the series at all. **Delete** has the same three-way scope as of Phase 5 — see below.
 
 **`session_series.recurrence_days`** is an `int[]` where 0 = Sunday, 1 = Monday … 6 = Saturday. Example: `{2,4}` = Tuesday + Thursday.
 
-**Status note:** `session_blocks` table and its RLS policy are live, and `BlockForm`/the `training_blocks` CRUD UI is fully built. The session-detail UI panel to attach blocks to a specific session (drag-and-drop or click-to-add) has **not** been built yet — only the data layer exists for that piece.
+**Status note:** `session_blocks` table and its RLS policy are live. `BlockForm`/the `training_blocks` CRUD UI is fully built. The session-detail panel to attach blocks to a session was the last missing piece in this table's design — it shipped in Phase 5 as `SessionBlocksPanel`, a tap-to-add tablet-friendly checklist (see Phase 5 section and Component Patterns below).
 
 ### Table Reference — Phase 4B (training plans + sharing) ✅ applied
 
@@ -103,11 +104,28 @@ organizations                    (optional — Phase 5, multi-coach academies)
 
 **`raw_payload JSONB`** preserves the complete Playtomic API response so historical imports survive upstream schema changes.
 
+### Table Reference — Phase 5 (UX refinement from coach QA feedback) ✅ applied
+
+Phase 5 was driven by hands-on coach feedback rather than a pre-planned spec. It added one new table, one new column, and reframed an existing module's UI copy without touching its schema.
+
+| Table/column | Description | Key fields |
+|---|---|---|
+| `tactic_boards` | Drag/drop padel court diagrams (tokens + shot lines) | `coach_id`, `strategy_id` (nullable FK), `title`, `board_data jsonb` |
+| `session_blocks.completed` | New boolean column (default `false`) on the existing Phase 4A table | enables the live-session checklist in `SessionBlocksPanel` |
+
+**`tactic_boards.board_data`** shape: `{ tokens: [{id, x, y, team, label}], lines: [{id, x1, y1, x2, y2, dashed}] }`. All coordinates are **percentages (0–100)** of court width/height, not pixels — this is the same resolution-independence pattern noted in the original product learnings, and it means the stored data renders correctly on any screen size without migration or re-scaling logic. `team` is `'own' | 'rival' | 'ball'`, used to pick token color and default vertical position when a token is added.
+
+**Court geometry correctness:** the rendered SVG court uses FIP regulation proportions — 10m × 20m court, service line **3.05m from the back wall** (equivalently 6.95m from the net). This was wrong in the first cut (the service line was placed 3m from the net instead, making the service box look too shallow) — caught from a coach screenshot during QA and fixed by introducing a single `SERVICE_LINE_DEPTH` constant measured from the wall, with a code comment explaining why "3m from net" is the wrong reference point to copy from memory.
+
+**Tournaments → "Competencias" reframe:** the existing `tournaments` / `tournament_results` tables and the `/tournaments` routes already matched the right data model (log where a player competed externally and what they achieved — not a bracket the coach runs). Only the UI copy was wrong, implying the coach organizes the event. Phase 5 changed all user-facing text ("Torneos" → "Competencias", "+ Nuevo torneo" → "+ Nueva competencia," etc.) without renaming the table, columns, routes, or Server Action names — see Design Decisions below for why.
+
 ### Row Level Security
 
 RLS is enabled on all tables. Every policy is scoped to `auth.uid()` so a coach can only read and write their own data. This is enforced at the database level — application bugs cannot cause cross-coach data leakage.
 
 **Exception — shared player profiles:** `players` has an additional SELECT policy with no `auth.uid()` check, gated by `share_enabled = true`. Column-level restriction (only exposing safe fields) is enforced in the application query, not by RLS — RLS controls rows, not columns.
+
+**Junction tables without a direct `coach_id` column** (`session_players`, `session_blocks`, `tournament_results`) are scoped via a subquery against their parent's `coach_id` — e.g. `session_id in (select id from sessions where coach_id = auth.uid())`. `tactic_boards` has its own direct `coach_id` column instead, since a board isn't strictly a child of any other coach-owned row (it can exist with no `strategy_id` at all).
 
 **Note:** The `coaches` table requires two separate policies: `for all using` (SELECT/UPDATE/DELETE) and `for insert with check` (INSERT on registration).
 
@@ -116,6 +134,8 @@ Migration files:
 - `supabase/migrations/20260615000002_phase4a_calendar_blocks.sql` — Phase 4A ✅ applied 2026-06-20
 - `supabase/migrations/20260615000003_phase4b_plans_sharing.sql` — Phase 4B ✅ applied 2026-06-20
 - `supabase/migrations/20260615000004_phase4c_playtomic.sql` — Phase 4C ✅ applied 2026-06-20 (schema only — no sync logic built yet)
+- `supabase/migrations/20260622000005_tactic_boards.sql` — Phase 5 ⚠️ written, **apply manually** before using `/boards`
+- `supabase/migrations/20260623000006_session_blocks_completed.sql` — Phase 5 ⚠️ written, **apply manually** before using the session blocks checklist
 
 Keeping migrations separate makes rollback safe and keeps git history readable.
 
@@ -148,7 +168,7 @@ All user-initiated mutations use Next.js Server Actions. Background jobs (Playto
 | `src/app/actions/auth.ts` | `login`, `register`, `logout` |
 | `src/app/actions/players.ts` | `createPlayer`, `updatePlayer`, `deletePlayer` |
 | `src/app/actions/snapshots.ts` | `createSnapshot`, `deleteSnapshot` |
-| `src/app/actions/sessions.ts` | `createSession`, `updateSession`, `updateAttendance`, `deleteSession` |
+| `src/app/actions/sessions.ts` | `createSession`, `updateSession`, `updateAttendance` — `deleteSession` is now unused dead code, superseded by `deleteSeriesOccurrence` in `series.ts` (Phase 5) |
 | `src/app/actions/tournaments.ts` | `createTournament`, `updateTournament`, `addResult`, `deleteResult`, `deleteTournament` |
 | `src/app/actions/strategies.ts` | `createStrategy`, `updateStrategy`, `deleteStrategy` |
 
@@ -157,7 +177,7 @@ All user-initiated mutations use Next.js Server Actions. Background jobs (Playto
 | File | Actions |
 |---|---|
 | `src/app/actions/blocks.ts` | `createBlock`, `updateBlock`, `deleteBlock` |
-| `src/app/actions/series.ts` | `createSeries`, `generateSessionsForSeries`, `updateSingleSessionInSeries`, `updateSeries` (scoped: this/future/all), `deleteSeries` |
+| `src/app/actions/series.ts` | `createSeries`, `generateSessionsForSeries`, `updateSingleSessionInSeries`, `updateSeries` (scoped: this/future/all), `deleteSeries(id, cascade)`, `deleteSeriesOccurrence(sessionId, scope)` (scoped: this/future/all — added Phase 5) |
 
 **Server Actions — Phase 4B (live):**
 
@@ -165,6 +185,13 @@ All user-initiated mutations use Next.js Server Actions. Background jobs (Playto
 |---|---|
 | `src/app/actions/plans.ts` | `createPlan`, `updatePlan`, `deletePlan`, `addPhase`, `deletePhase`, `updatePlanSession`, `linkSessionToPlan` (no UI trigger yet), `markPlanSessionSkipped` |
 | `src/app/actions/sharing.ts` | `enablePlayerShare`, `disablePlayerShare`, `regenerateShareToken` |
+
+**Server Actions — Phase 5 (live):**
+
+| File | Actions |
+|---|---|
+| `src/app/actions/boards.ts` | `createBoard`, `saveBoardData`, `renameBoard`, `deleteBoard` |
+| `src/app/actions/sessionBlocks.ts` | `addBlockToSession`, `removeSessionBlock`, `toggleSessionBlockCompleted`, `reorderSessionBlock` |
 
 **Route Handlers — Phase 4C (not yet built):**
 
@@ -192,7 +219,7 @@ All pages are Server Components by default. Client Components (`'use client'`) a
 | Component | Reason for client |
 |---|---|
 | `AttendanceToggle` | Optimistic UI toggle with `useTransition` |
-| `DeletePlayerButton` / `DeleteSnapshotButton` / `DeleteSessionButton` / `DeleteTournamentButton` / `DeleteResultButton` / `DeleteStrategyButton` / `DeleteBlockButton` / `DeleteSeriesButton` / `DeletePlanButton` | `onSubmit` confirm dialog before calling the delete Server Action |
+| `DeletePlayerButton` / `DeleteSnapshotButton` / `DeleteSessionButton` / `DeleteTournamentButton` / `DeleteResultButton` / `DeleteStrategyButton` / `DeleteBlockButton` / `DeleteSeriesButton` / `DeletePlanButton` / `DeleteBoardButton` | `onSubmit` confirm dialog before calling the delete Server Action |
 | `PlayerForm` / `SessionForm` / `SnapshotForm` / `TournamentForm` / `ResultForm` / `StrategyForm` | Forms with controlled inputs and `defaultValues` |
 | `BlockForm` | Form with block type select + optional strategy link select |
 | `SeriesForm` | Form with weekday checkboxes, roster checkboxes, and `extraActions` — renders multiple submit buttons (each with its own `formAction`) inside a single `<form>`, used for the scoped-edit buttons on the series edit page |
@@ -200,6 +227,9 @@ All pages are Server Components by default. Client Components (`'use client'`) a
 | `AddPhaseForm` | Collapsed-by-default inline form (`useState` for open/closed) so the plan detail page doesn't show a full form until the coach asks for it |
 | `SharePanel` | Toggle switch + copy-to-clipboard button (`navigator.clipboard`) + regenerate-token confirm, all calling Server Actions from `sharing.ts` |
 | `ProgressChart` | Recharts LineChart (requires browser APIs); reused unmodified on the public share page |
+| `CoachHoursChart` | Recharts BarChart (requires browser APIs); pure presentation, all aggregation happens server-side in the dashboard page |
+| `TacticBoardEditor` | Pointer-event drag/drop canvas (SVG) with debounced autosave — see pattern below |
+| `SessionBlocksPanel` | Optimistic local state for add/remove/reorder/complete, each persisted individually via a Server Action call in `startTransition` — see pattern below |
 
 ### Supabase join typing pattern
 
@@ -216,7 +246,7 @@ const { data } = await supabase
 const name = (row.players as { full_name: string } | null)?.full_name
 ```
 
-This pattern was reused for the calendar page's `sessions(... session_series(start_time, session_type))` join and the player detail page's attendance/results joins.
+This pattern was reused for the calendar page's `sessions(... session_series(start_time, session_type))` join, the player detail page's attendance/results joins, and the session detail page's `session_blocks(... training_blocks(title, block_type, duration_min))` join (Phase 5).
 
 ### Polymorphic target pattern (training_plans)
 
@@ -239,7 +269,20 @@ The plans list page batches this instead of resolving per-row: it collects all `
 
 ### Multi-submit forms with `extraActions` / `formAction`
 
-`SeriesForm` needed three different Server Actions reachable from one form (apply to template only / future sessions / entire series), without making the coach fill out the same fields three times. The solution: a single `<form action={defaultAction}>` whose primary submit button has no `formAction` (uses the form's default), and additional buttons each set their own `formAction={alternateAction}`. This is a standard HTML/Next.js capability — `formAction` on a `<button type="submit">` overrides the parent `<form>`'s `action` for that specific submit, while still submitting the same field values.
+`SeriesForm` needed three different Server Actions reachable from one form (apply to template only / future sessions / entire series), without making the coach fill out the same fields three times. The solution: a single `<form action={defaultAction}>` whose primary submit button has no `formAction` (uses the form's default), and additional buttons each set their own `formAction={alternateAction}`. This is a standard HTML/Next.js capability — `formAction` on a `<button type="submit">` overrides the parent `<form>`'s `action` for that specific submit, while still submitting the same field values. `DeleteSeriesButton` and `DeleteSessionButton` reuse the same idea for scoped delete (Phase 5), but with one `<form>` per button instead, since each scope needs its own confirm-dialog wording.
+
+### Pointer-capture canvas with percentage-based persistence (`TacticBoardEditor`)
+
+The tactical whiteboard needed touch-friendly drag/drop on an SVG court without a third-party drag library. Pattern:
+
+1. The outer `<svg>` has a fixed `viewBox` (200×400, a 1:2 ratio matching the 10m×20m court). Pointer coordinates are converted to viewBox units with a simple ratio against `getBoundingClientRect()` — no CTM matrix math needed, since the container keeps the same aspect ratio as the viewBox.
+2. On `pointerdown`, the dragged element calls `setPointerCapture` on the *outer* `<svg>` (not itself), so subsequent `pointermove`/`pointerup` events keep firing on the `<svg>` — and on the handlers already attached there — even if the pointer moves outside the token's original bounding box.
+3. Stored coordinates are **percentages of court width/height**, not raw pixel positions — converted at the boundary (`courtToPercent` / `percentToCourt`). This is the same resolution-independence principle as `tactic_boards.board_data` above.
+4. Autosave is a single `useEffect` watching `[tokens, lines]`: it schedules a `setTimeout` debounce (~700ms) on every change, calling the `saveBoardData` Server Action inside `startTransition`, and clears the pending timeout in its cleanup function on the next change. A `hasMountedRef` skips the save on first render, since that state is exactly what's already in the database. This avoids a stale-closure bug that a naive "call a `scheduleSave()` function after every `setState`" approach would have (the closure would capture state from before the update).
+
+### Optimistic local state for a non-form server-synced list (`SessionBlocksPanel`)
+
+Unlike `AttendanceToggle` (a single boolean), `SessionBlocksPanel` manages an ordered list with adds, removes, reorders, and a completed flag — all from tap targets, no typing. Each mutation follows the same shape: update local `useState` immediately (so the tap feels instant), then call the matching Server Action inside `startTransition`. The one case requiring a rollback is `handleAdd`: a new row is given a temporary client-generated id, appended optimistically, then replaced with the real id returned by `addBlockToSession()` — or removed entirely if the action reports failure. Reordering swaps `sort_order` between two adjacent rows and persists both with two separate Server Action calls, rather than batching, since this table has no bulk-update Server Action and the UI only ever swaps one pair at a time (up/down buttons, not free drag-reorder).
 
 ---
 
@@ -252,7 +295,7 @@ The coach is the paying customer, not the academy. `organizations` is modeled bu
 Physical metrics (weight, height) and performance scores change over time. Keeping them in a separate table with a `recorded_at` date enables progress charts over months — a core differentiator vs a notebook or spreadsheet.
 
 **2026-06-12 — PWA first, native later**
-The app works on any device from the first deploy without App Store approval or native build pipelines. React Native is added in Phase 6 once real users prove the PWA insufficient.
+The app works on any device from the first deploy without App Store approval or native build pipelines. React Native is added later once real users prove the PWA insufficient.
 
 **2026-06-12 — Supabase RLS as the security boundary**
 Access control lives at the database level, not only in application code. Even if a bug exists in the Next.js layer, RLS policies prevent a coach from reading another coach's data.
@@ -261,7 +304,7 @@ Access control lives at the database level, not only in application code. Even i
 All create/update/delete operations use Next.js Server Actions instead of API routes. This avoids boilerplate, keeps logic server-side, and integrates cleanly with the App Router redirect model. Exception: background/cron jobs use Route Handlers.
 
 **2026-06-15 — No Stripe yet**
-Stripe integration is deferred to Phase 5. The `plan` field exists on the `coaches` table and all infrastructure is in place, but no payment flow or plan enforcement is implemented. This will be added once beta coaches validate the product.
+Stripe integration is deferred. The `plan` field exists on the `coaches` table and all infrastructure is in place, but no payment flow or plan enforcement is implemented. This will be added once beta coaches validate the product.
 
 **2026-06-15 — `session_series` generates concrete `sessions` rows**
 Rather than computing recurrence on the fly at query time, concrete `sessions` rows are generated upfront. This keeps `sessions` as the single source of truth for all calendar queries — no special-casing needed in the UI, attendance, or plan linking logic. The `series_id + series_index` fields enable scope-based edits without complexity. Generation is idempotent by design (`generateSessionsForSeries` skips indexes that already exist), which is what makes it safe to extend an open-ended series later without duplicating sessions.
@@ -286,3 +329,21 @@ The natural first instinct for "give the coach three ways to save" is three sepa
 
 **2026-06-20 — Plan creation pre-generates all session slots**
 `createPlan()` immediately inserts `total_sessions` rows into `plan_sessions`, all unassigned to a phase, rather than letting the coach add them one at a time. This means the timeline view is complete and scannable from the moment the plan exists — the coach edits/assigns slots in place rather than building the list up incrementally. The tradeoff is that changing `total_sessions` after creation requires manually adding/removing `plan_sessions` rows (no UI for this yet); in practice a coach who needs to change session count would more naturally adjust phase `session_count` or just create a new plan.
+
+**2026-06-22 — Monthly calendar view reuses the weekly page's data layer**
+Rather than a separate route, `/calendar` grew a `view=week|month` query param. Both views share the same Supabase query shape (sessions joined to `session_series` for color/time), just over a different date range (`startOfWeek`/`endOfWeek` vs a full-month grid padded to whole weeks). This avoids duplicating the session-fetch logic and keeps "today," "next/prev," and the series list below the calendar working identically in both views.
+
+**2026-06-22 — Series/session delete needed the same three-way scope as edit, plus a cascade option**
+QA surfaced two real gaps, not just a UX nit: (1) deleting a series left every generated session behind as an orphaned one-off, requiring manual cleanup session-by-session; (2) there was no way to delete "this and future" occurrences without deleting the whole series. Fixed by adding `deleteSeriesOccurrence(sessionId, scope)` mirroring `updateSeries`'s this/future/all scope, and a `cascade` boolean on `deleteSeries`. The `'future'` scope additionally caps the series' `ends_on` to the day before the deleted occurrence — without this, the next edit to the series would regenerate the very sessions just deleted, since `generateSessionsForSeries` only knows to skip indexes that already exist in the database.
+
+**2026-06-22 — `tactic_boards` as its own table, not a column on `strategies`**
+A board can exist standalone (a coach sketching a play before deciding it's worth saving as a named strategy) or linked to a strategy after the fact via a nullable `strategy_id`. Modeling it as a separate table with its own `coach_id` (rather than embedding `board_data jsonb` directly on `strategies`) keeps both directions cheap: list all boards regardless of strategy, or list all boards for one strategy, without ever needing a board to exist only in the context of a strategy.
+
+**2026-06-22 — Coach utilization (hours/month) replaces "progress chart for whichever player was last viewed" on the dashboard**
+The dashboard previously showed a `ProgressChart` for the player with the most recent snapshot — which in practice meant "whichever player the coach happened to open last," not a meaningful default. Replaced with a monthly hours-coached bar chart computed directly from `sessions.duration_min` (no new table) plus a "+N% vs last month" headline — a number that maps directly to the coach's income. The per-player `ProgressChart` was not removed; it stays exactly where it already made sense, on each player's own detail page.
+
+**2026-06-23 — Tournaments → "Competencias" reframe is copy-only, not a schema/route rename**
+The `tournaments` data model already matched the real use case (log where a player competed externally and what they achieved) — only the UI language assumed the coach organizes the event. Renaming the table, routes, and Server Action names was considered and rejected for this pass: there's no tool available in this workflow to delete old route files cleanly, so moving `/tournaments` to `/competitions` would have left orphaned, reachable duplicate routes rather than a clean rename. All user-facing copy was changed; `tournaments`/`tournament_results`, `/tournaments/*`, and the `*Tournament*` action/component names were left as internal implementation detail.
+
+**2026-06-23 — `session_blocks.completed` added as a single boolean, no per-block timestamp**
+The live-session checklist only needed a binary done/not-done toggle per block, tappable mid-class on a tablet. A `completed_at` timestamp was considered (useful for later analytics like "how long did this block actually take") but deferred — it adds a second field to keep in sync on every toggle for a use case that doesn't exist yet. Easy to add as a follow-up migration if a future feature needs it.
