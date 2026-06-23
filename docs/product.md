@@ -8,7 +8,7 @@ Vision, target customer, roadmap, and pricing.
 
 **pctmt** is a SaaS platform built for padel coaches who want to digitize their work. It replaces notebooks and spreadsheets with a purpose-built tool for managing players, planning training sessions, tracking competition results, and building a strategy and tactical content library.
 
-The core value proposition: a coach can show a player their progress over months — physical metrics, competition history, session attendance — in a way that a notebook never could. The product is now the operating system of a professional padel coach: calendar, planning, content library, player development, and (soon) external integrations in one place.
+The core value proposition: a coach can show a player their progress over months — physical metrics, competition history, session attendance — in a way that a notebook never could. The product is now the operating system of a professional padel coach: calendar, planning, content library, player development, branding, and (soon) external integrations and billing, all in one place.
 
 ---
 
@@ -25,6 +25,7 @@ The coach is the buyer — not the academy. A coach signs up, pays, and owns the
 - Players compete in local/regional tournaments the coach doesn't organize, only tracks
 - Currently tracks everything in WhatsApp, notes apps, or paper
 - May operate through a Playtomic-enabled club (relevant for Phase 4C integration)
+- Wants their own brand (name, logo, color) visible to players, not just "pctmt"
 
 ---
 
@@ -54,11 +55,15 @@ Payments via Stripe. Subscription billed monthly, cancel anytime. Stripe integra
 | **Calendar** | Week and month views, recurring series, scoped edit/delete | ✅ Live |
 | **Training blocks** | Reusable exercise block library; link to strategies; attach to a session as a tappable checklist | ✅ Live |
 | **Training plans** | Multi-session plans with phases, for groups or individual players | ✅ Live |
-| **Shared player profile** | Public read-only progress link for players, shareable via WhatsApp | ✅ Live |
+| **Shared player profile** | Public read-only progress link for players, shareable via WhatsApp; shows the coach's own branding | ✅ Live |
 | **Tactical whiteboard** | Drag-and-drop court diagram — players, ball, shot lines, autosaved | ✅ Live |
+| **Theme** | Light/dark toggle, persisted, no flash on load | ✅ Live |
+| **Language** | ES/EN switcher for the app's navigation/chrome | ✅ Live (infra) — full-app string coverage ongoing |
+| **Branding** | Per-coach name, logo, primary color — shown in-app and on shared player profiles | ✅ Live |
+| **Navigation** | Grouped sidebar + topbar, replacing the old per-page header | ✅ Live |
 | **Playtomic sync** | Import club bookings from Playtomic, convert to sessions in one click | 🔜 Phase 4C |
-| **Stripe** | Free + Pro plan enforcement, subscription billing | ⏳ Phase 6 |
-| **PWA** | Offline support, installable on mobile, push notifications | ⏳ Phase 6 |
+| **Stripe** | Free + Pro plan enforcement, subscription billing | ⏳ Phase 7 |
+| **PWA** | Offline support, installable on mobile, push notifications | ⏳ Phase 7 |
 
 ---
 
@@ -157,20 +162,32 @@ Unlike Phases 1–4, this phase wasn't planned upfront — it came from the coac
 
 **Migrations added, not yet applied in production as of this writing — apply before relying on these features:** `20260622000005_tactic_boards.sql`, `20260623000006_session_blocks_completed.sql`.
 
-### Phase 6 — Monetization + Retention
+### Phase 6 — Platform UX: Theming, Navigation & Branding ✅ COMPLETE (2026-06-23)
+
+Until this phase, every page rendered its own hardcoded "pctmt" header and the app had no concept of a coach's own brand, no dark mode, and no language other than hardcoded Spanish strings. This phase replaced the per-page header with a real app shell and gave each coach a presentable, ownable product to put in front of players.
+
+- [x] **Dark / light theme** — toggle in the topbar, persisted in `localStorage`, applied via a `.dark` class + CSS variables (no flash on load, no new dependency)
+- [x] **Grouped sidebar + topbar navigation** — replaces the duplicated per-page `<header>` across every module (Dashboard, Calendario, Jugadores, Sesiones, Series, Bloques, Planes, Estrategias, Pizarras, Competencias, Ajustes), with a mobile hamburger drawer
+- [x] **Per-coach branding** — `/settings` lets a coach set a brand name, logo URL, and primary color; applied to their own sidebar/topbar and to the public shared player profile their players see, via a narrow `get_share_branding()` lookup that exposes only branding fields publicly
+- [x] **Language switcher (infra + chrome)** — ES/EN dropdown in the topbar, persisted in a cookie, server-rendered (no hydration mismatch) for the sidebar/topbar/settings page. A custom dictionary was used instead of `next-intl` to avoid a new dependency and routing changes
+- [x] **All dashboard pages migrated** — every list and detail page (including nested `[id]`/`edit`/`new`/`snapshots` routes) had its duplicate header removed and its hardcoded `gray-*`/`white` Tailwind classes swapped for semantic tokens (`bg-card`, `text-foreground`, `border-border`, `bg-primary`) so the whole app responds to the theme toggle
+
+**Scoped out of this pass, left for later:** translating the rest of the app's hardcoded Spanish strings (forms, list pages, etc.) into the ES/EN dictionary — the language switcher currently only covers navigation, chrome, and the settings page. Per-coach branding only covers name/logo/color; logo upload (vs. pasting a URL) is not built.
+
+### Phase 7 — Monetization + Retention
 
 To be refined based on real coach feedback. This phase turns the product into a business.
 
 - [ ] **Stripe integration** — enforce Free (≤5 players) vs Pro (unlimited) plans; subscription billing, cancel anytime
 - [ ] **Landing page** — standalone marketing page with value proposition, screenshots, pricing table, and sign-up CTA (separate from the app)
 - [ ] **Onboarding flow** — guided first-run experience so a new coach reaches their first complete session in under 5 minutes
-- [ ] **Multi-language** — Spanish + English; Spanish first (primary market is Spain + Latin America)
+- [ ] **Full-app translation** — extend the ES/EN dictionary infra built in Phase 6 to every remaining page and form, not just navigation/chrome
 - [ ] **PWA manifest + service worker** — offline attendance marking during live sessions on court with no cell signal
 - [ ] **Push notifications via PWA** — session reminders 30 min before, plan milestone alerts ("you've completed phase 1")
 - [ ] **PDF player report** — exportable, printable progress report per player; the coach hands it to the player or prints it for parents
 - [ ] **Academy / multi-coach** — one organization, multiple coaches, shared player pool. Uses the `organizations` table already modeled in the schema
 
-### Phase 7 — Ecosystem
+### Phase 8 — Ecosystem
 
 - [ ] React Native app (iOS + Android) — only after PWA proves insufficient for real coaches in production
 - [ ] App Store + Play Store publish
@@ -185,7 +202,7 @@ To be refined based on real coach feedback. This phase turns the product into a 
 
 **vs a generic tool (Notion, spreadsheet):** Built specifically for padel. Session types, competition categories, court zones, dominant hand, training block types, plan phases — the data model speaks the coach's language.
 
-**vs other coaching apps:** Focused on padel first. Simpler and cheaper than broad sports management platforms aimed at academies or clubs. The shared player profile, tactical whiteboard, and Playtomic integration are padel-native features that generic tools cannot offer.
+**vs other coaching apps:** Focused on padel first. Simpler and cheaper than broad sports management platforms aimed at academies or clubs. The shared player profile, tactical whiteboard, per-coach branding, and Playtomic integration are padel-native (or coach-ownable) features that generic tools cannot offer.
 
 **vs a Playtomic-only workflow:** Playtomic manages court bookings. pctmt manages what happens *during* those bookings — the coaching content, player development, and long-term progress. They are complementary, not competing.
 
@@ -193,6 +210,6 @@ To be refined based on real coach feedback. This phase turns the product into a 
 
 ## The "Worth Paying For" Moment
 
-A coach subscribes because the tool makes them look professional in front of their players. The specific moment: coach pulls out their phone mid-session, opens the shared player profile for María, and shows her the progress chart — endurance up 18 points over 4 months, attendance at 92%, semifinal at the last competition. María sees her own trajectory. The coach's value is visible. That justifies both the coaching fee and the pctmt subscription.
+A coach subscribes because the tool makes them look professional in front of their players. The specific moment: coach pulls out their phone mid-session, opens the shared player profile for María, and shows her the progress chart — endurance up 18 points over 4 months, attendance at 92%, semifinal at the last competition. The page carries the coach's own name and color, not "pctmt." María sees her own trajectory under her coach's brand. That justifies both the coaching fee and the pctmt subscription.
 
 This moment is fully live in production. Everything in the remaining roadmap either enables it further or makes it happen faster.
