@@ -6,9 +6,9 @@ Vision, target customer, roadmap, and pricing.
 
 ## What is pctmt?
 
-**pctmt** is a SaaS platform built for padel coaches who want to digitize their work. It replaces notebooks and spreadsheets with a purpose-built tool for managing players, planning training sessions, tracking tournament results, and building a strategy library.
+**pctmt** is a SaaS platform built for padel coaches who want to digitize their work. It replaces notebooks and spreadsheets with a purpose-built tool for managing players, planning training sessions, tracking competition results, and building a strategy and tactical content library.
 
-The core value proposition: a coach can show a player their progress over months — physical metrics, tournament history, session attendance — in a way that a notebook never could. The product is now the operating system of a professional padel coach: calendar, planning, content library, player development, and (soon) external integrations in one place.
+The core value proposition: a coach can show a player their progress over months — physical metrics, competition history, session attendance — in a way that a notebook never could. The product is now the operating system of a professional padel coach: calendar, planning, content library, player development, and (soon) external integrations in one place.
 
 ---
 
@@ -21,7 +21,8 @@ The coach is the buyer — not the academy. A coach signs up, pays, and owns the
 **Profile:**
 - Manages 10–40 active players
 - Runs group and individual sessions on recurring weekly schedules
-- Participates in local and regional tournaments
+- Often works courtside on a tablet, between or during classes — not just at a desk
+- Players compete in local/regional tournaments the coach doesn't organize, only tracks
 - Currently tracks everything in WhatsApp, notes apps, or paper
 - May operate through a Playtomic-enabled club (relevant for Phase 4C integration)
 
@@ -33,7 +34,7 @@ The coach is the buyer — not the academy. A coach signs up, pays, and owns the
 |---|---|---|
 | **Free** | $0/month | Up to 5 players, basic session log |
 | **Pro** | ~$15–20/month | Unlimited players, all modules, training plans, Playtomic sync |
-| **Academy** | TBD | Multi-coach, shared player pool, organization management (Phase 5+) |
+| **Academy** | TBD | Multi-coach, shared player pool, organization management (later phase) |
 
 > Pricing to be validated with beta users before locking in.
 
@@ -46,17 +47,18 @@ Payments via Stripe. Subscription billed monthly, cancel anytime. Stripe integra
 | Module | Description | Status |
 |---|---|---|
 | **Players** | Full profiles, physical snapshots, progress chart, session history | ✅ Live |
-| **Sessions** | Plan classes, set objectives, log attendance | ✅ Live |
-| **Tournaments** | Register events, record results per player and pair | ✅ Live |
-| **Strategies** | Play library with court zones and tags | ✅ Live |
-| **Dashboard** | Stats, progress chart, recent sessions, upcoming tournaments | ✅ Live |
-| **Calendar** | Weekly 7-column view, recurring series, session type classification | ✅ Live |
-| **Training blocks** | Reusable exercise block library; link to strategies | ✅ Live |
+| **Sessions** | Plan classes, set objectives, log attendance, attach a live block checklist | ✅ Live |
+| **Competencias** | Log where a player competed externally and what they achieved (renamed from "Torneos" — see Phase 5) | ✅ Live |
+| **Strategies** | Play library with court zones and tags, linkable to a tactical whiteboard | ✅ Live |
+| **Dashboard** | Stats, coach utilization (hours/month), recent sessions, upcoming competitions | ✅ Live |
+| **Calendar** | Week and month views, recurring series, scoped edit/delete | ✅ Live |
+| **Training blocks** | Reusable exercise block library; link to strategies; attach to a session as a tappable checklist | ✅ Live |
 | **Training plans** | Multi-session plans with phases, for groups or individual players | ✅ Live |
 | **Shared player profile** | Public read-only progress link for players, shareable via WhatsApp | ✅ Live |
+| **Tactical whiteboard** | Drag-and-drop court diagram — players, ball, shot lines, autosaved | ✅ Live |
 | **Playtomic sync** | Import club bookings from Playtomic, convert to sessions in one click | 🔜 Phase 4C |
-| **Stripe** | Free + Pro plan enforcement, subscription billing | ⏳ Phase 5 |
-| **PWA** | Offline support, installable on mobile, push notifications | ⏳ Phase 5 |
+| **Stripe** | Free + Pro plan enforcement, subscription billing | ⏳ Phase 6 |
+| **PWA** | Offline support, installable on mobile, push notifications | ⏳ Phase 6 |
 
 ---
 
@@ -89,9 +91,9 @@ Payments via Stripe. Subscription billed monthly, cancel anytime. Stripe integra
 - [x] Progress chart on individual player profile
 - [x] Session attendance history on player profile
 - [x] Edit session and tournament (closes CRUD gap)
-- [ ] Stripe integration — deferred to Phase 5
+- [ ] Stripe integration — deferred
 - [ ] Email notifications — deferred
-- [ ] PWA manifest + offline support — deferred to Phase 5
+- [ ] PWA manifest + offline support — deferred
 
 ### Phase 4A — Calendar + Training Blocks ✅ COMPLETE (2026-06-20)
 
@@ -104,7 +106,7 @@ Makes sessions feel structured and professional. The coach stops typing from scr
 - [x] **Dashboard navigation** — Calendar and Bloques surfaced as primary entry points
 - [x] **Schema migration** — `session_series`, `training_blocks`, `session_blocks`; `series_id` + `series_index` added to `sessions`
 
-**Not yet built from the original scope:** drag-and-drop block reordering on sessions, and the `session_blocks` UI itself (schema and Server Actions exist; the session-detail panel to attach blocks is still pending — candidate for a fast-follow).
+**Originally flagged as missing, closed in Phase 5:** the `session_blocks` UI to attach blocks to a session — schema and Server Actions existed since this phase, but no panel used them until `SessionBlocksPanel` shipped.
 
 ### Phase 4B — Training Plans + Player Sharing ✅ COMPLETE (2026-06-20)
 
@@ -113,7 +115,7 @@ The layer that makes coaching value visible — to the coach, to the player, and
 - [x] **Training plans** — multi-session plans attached to either a session series (group plan) or an individual player (individual plan), via the `target_type`/`target_id` polymorphic pattern. Auto-generates one `plan_sessions` slot per planned session on creation
 - [x] **Phases** — optional color-coded groupings within a plan, with objectives and session counts
 - [x] **Plan progress view** — timeline showing planned vs done vs skipped sessions, completion percentage bar
-- [x] **Shared player profile** — public read-only link at `/share/player/[token]`, shareable via WhatsApp. Shows progress chart, last-30-day attendance rate, last 5 tournament results. No account required. Toggle, copy-link, and regenerate-token UI lives on the player detail page
+- [x] **Shared player profile** — public read-only link at `/share/player/[token]`, shareable via WhatsApp. Shows progress chart, last-30-day attendance rate, last 5 competition results. No account required. Toggle, copy-link, and regenerate-token UI lives on the player detail page
 - [x] **Public route exemption** — `/share` excluded from the auth middleware; access gated entirely by Supabase RLS (`share_enabled = true`)
 - [x] **Dashboard navigation** — Planes surfaced next to Calendario
 
@@ -142,9 +144,22 @@ Import bookings from Playtomic-enabled clubs directly into the pctmt calendar.
 
 **Status:** Schema migration applied (`playtomic_connections`, `playtomic_bookings`). Server Actions, cron route handler, and UI not yet built.
 
-### Phase 5 — Monetization + Retention
+### Phase 5 — UX Refinement from Coach QA Feedback ✅ COMPLETE (2026-06-23)
 
-To be refined based on real coach feedback from Phases 4A–4C. This phase turns the product into a business.
+Unlike Phases 1–4, this phase wasn't planned upfront — it came from the coach actually using the product day-to-day and listing what felt wrong or missing. Smaller in scope per item, but each item came from a real friction point, not a guess.
+
+- [x] **Monthly calendar view** — week/month toggle on `/calendar`, sharing the same data layer as the weekly view (just a different date range)
+- [x] **Scoped recurring delete** — deleting a series or a single occurrence now offers the same this/future/all scope editing already had. Closes a real gap: deleting a series used to leave every generated session behind as an orphaned one-off, requiring manual cleanup
+- [x] **Tactical whiteboard** — new `tactic_boards` module: drag/drop players, ball, and shot-line drawing on an SVG padel court, optionally linked to a strategy, autosaved. Court proportions corrected mid-build after a coach screenshot caught the service line at the wrong depth (was 3m from net, should be 3.05m from the back wall — confirmed against FIP regulation)
+- [x] **Coach utilization on the dashboard** — replaced a progress chart for "whichever player was opened last" (not a meaningful metric) with hours-coached-per-month, computed from existing session data, plus a vs-last-month delta. Maps directly to the coach's income, unlike the old chart
+- [x] **"Torneos" → "Competencias" reframe** — the data model already matched the real workflow (log where a player competed externally, not organize a bracket); only the UI language was wrong. Copy changed throughout; schema, routes, and internal names left as-is (see `architecture.md` for why)
+- [x] **Session blocks UI** — `SessionBlocksPanel`: tap-to-add blocks onto a session from the library, reorder with up/down, mark complete during the live class. Closes the `session_blocks` gap flagged back in Phase 4A — the table existed for three phases with no UI ever built on top of it
+
+**Migrations added, not yet applied in production as of this writing — apply before relying on these features:** `20260622000005_tactic_boards.sql`, `20260623000006_session_blocks_completed.sql`.
+
+### Phase 6 — Monetization + Retention
+
+To be refined based on real coach feedback. This phase turns the product into a business.
 
 - [ ] **Stripe integration** — enforce Free (≤5 players) vs Pro (unlimited) plans; subscription billing, cancel anytime
 - [ ] **Landing page** — standalone marketing page with value proposition, screenshots, pricing table, and sign-up CTA (separate from the app)
@@ -155,7 +170,7 @@ To be refined based on real coach feedback from Phases 4A–4C. This phase turns
 - [ ] **PDF player report** — exportable, printable progress report per player; the coach hands it to the player or prints it for parents
 - [ ] **Academy / multi-coach** — one organization, multiple coaches, shared player pool. Uses the `organizations` table already modeled in the schema
 
-### Phase 6 — Ecosystem
+### Phase 7 — Ecosystem
 
 - [ ] React Native app (iOS + Android) — only after PWA proves insufficient for real coaches in production
 - [ ] App Store + Play Store publish
@@ -168,9 +183,9 @@ To be refined based on real coach feedback from Phases 4A–4C. This phase turns
 
 **vs a notebook:** Progress is searchable, shareable, and chartable. A coach can show a player exactly how their endurance score improved over 6 months.
 
-**vs a generic tool (Notion, spreadsheet):** Built specifically for padel. Session types, tournament categories, court zones, dominant hand, training block types, plan phases — the data model speaks the coach's language.
+**vs a generic tool (Notion, spreadsheet):** Built specifically for padel. Session types, competition categories, court zones, dominant hand, training block types, plan phases — the data model speaks the coach's language.
 
-**vs other coaching apps:** Focused on padel first. Simpler and cheaper than broad sports management platforms aimed at academies or clubs. The shared player profile and Playtomic integration are padel-native features that generic tools cannot offer.
+**vs other coaching apps:** Focused on padel first. Simpler and cheaper than broad sports management platforms aimed at academies or clubs. The shared player profile, tactical whiteboard, and Playtomic integration are padel-native features that generic tools cannot offer.
 
 **vs a Playtomic-only workflow:** Playtomic manages court bookings. pctmt manages what happens *during* those bookings — the coaching content, player development, and long-term progress. They are complementary, not competing.
 
@@ -178,6 +193,6 @@ To be refined based on real coach feedback from Phases 4A–4C. This phase turns
 
 ## The "Worth Paying For" Moment
 
-A coach subscribes because the tool makes them look professional in front of their players. The specific moment: coach pulls out their phone mid-session, opens the shared player profile for María, and shows her the progress chart — endurance up 18 points over 4 months, attendance at 92%, semifinal at the last tournament. María sees her own trajectory. The coach's value is visible. That justifies both the coaching fee and the pctmt subscription.
+A coach subscribes because the tool makes them look professional in front of their players. The specific moment: coach pulls out their phone mid-session, opens the shared player profile for María, and shows her the progress chart — endurance up 18 points over 4 months, attendance at 92%, semifinal at the last competition. María sees her own trajectory. The coach's value is visible. That justifies both the coaching fee and the pctmt subscription.
 
-This moment is now fully live in production. Everything in the remaining roadmap either enables it further or makes it happen faster.
+This moment is fully live in production. Everything in the remaining roadmap either enables it further or makes it happen faster.
