@@ -3,7 +3,47 @@ export type Locale = 'es' | 'en'
 export const locales: Locale[] = ['es', 'en']
 export const defaultLocale: Locale = 'es'
 
-export const dictionaries = {
+export interface Dictionary {
+  nav: {
+    group_main: string
+    dashboard: string
+    calendar: string
+    group_players: string
+    players: string
+    group_training: string
+    sessions: string
+    series: string
+    blocks: string
+    plans: string
+    group_strategy: string
+    strategies: string
+    boards: string
+    group_competition: string
+    tournaments: string
+    settings: string
+  }
+  header: {
+    logout: string
+    theme_light: string
+    theme_dark: string
+    language: string
+  }
+  settings: {
+    title: string
+    branding_title: string
+    branding_desc: string
+    brand_name: string
+    brand_name_placeholder: string
+    brand_logo: string
+    brand_color: string
+    save: string
+    appearance_title: string
+    appearance_desc: string
+    appearance_hint: string
+  }
+}
+
+export const dictionaries: Record<Locale, Dictionary> = {
   es: {
     nav: {
       group_main: 'Principal',
@@ -82,6 +122,4 @@ export const dictionaries = {
       appearance_hint: 'Use the controls in the top bar to switch theme and language.',
     },
   },
-} as const
-
-export type Dictionary = typeof dictionaries['es']
+}
