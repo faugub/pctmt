@@ -10,6 +10,8 @@ Vision, target customer, roadmap, and pricing.
 
 The core value proposition: a coach can show a player their progress over months — physical metrics, competition history, session attendance — in a way that a notebook never could. The product is now the operating system of a professional padel coach: calendar, planning, content library, player development, branding, and (soon) external integrations and billing, all in one place.
 
+> **Guiding voice:** `docs/voz-del-entrenador.md` is a synthesis of how elite padel coaches (Pablo Crosetti, Gustavo Pratto, Manu Martín) think about player development, translated into product principles. It's the filter behind Phase 6.5 and every coaching-depth decision from here on: does this help a coach decide better, or does it just add another screen?
+
 ---
 
 ## Target Customer
@@ -39,7 +41,7 @@ The coach is the buyer — not the academy. A coach signs up, pays, and owns the
 
 > Pricing to be validated with beta users before locking in.
 
-Payments via Stripe. Subscription billed monthly, cancel anytime. Stripe integration deferred post-MVP.
+Payments via Stripe. Subscription billed monthly, cancel anytime. Stripe integration deferred post-MVP, and deliberately deferred again past Phase 6.5 — see Roadmap.
 
 ---
 
@@ -61,7 +63,9 @@ Payments via Stripe. Subscription billed monthly, cancel anytime. Stripe integra
 | **Language** | ES/EN switcher for the app's navigation/chrome | ✅ Live (infra) — full-app string coverage ongoing |
 | **Branding** | Per-coach name, logo, primary color — shown in-app and on shared player profiles | ✅ Live |
 | **Navigation** | Grouped sidebar + topbar, replacing the old per-page header | ✅ Live |
-| **Playtomic sync** | Import club bookings from Playtomic, convert to sessions in one click | 🔜 Phase 4C |
+| **Tactical taxonomy** | Concept tags (paralelo/diagonal/transición/etc.) on strategies and blocks; player trajectory view; pair-as-entity | 🔜 Phase 6.5 |
+| **UX foundations** | Empty states, loading skeletons, toasts, undo, offline-tolerant notes, global search | 🔜 Phase 6.5 |
+| **Playtomic sync** | Import club bookings from Playtomic, convert to sessions in one click | ⏳ Phase 7 |
 | **Stripe** | Free + Pro plan enforcement, subscription billing | ⏳ Phase 7 |
 | **PWA** | Offline support, installable on mobile, push notifications | ⏳ Phase 7 |
 
@@ -147,7 +151,7 @@ Import bookings from Playtomic-enabled clubs directly into the pctmt calendar.
 
 **Upcoming Playtomic API features to incorporate when available:** player data endpoints, payment history, event and clinic data.
 
-**Status:** Schema migration applied (`playtomic_connections`, `playtomic_bookings`). Server Actions, cron route handler, and UI not yet built.
+**Status:** Schema migration applied (`playtomic_connections`, `playtomic_bookings`). Server Actions, cron route handler, and UI not yet built. **On hold — see Phase 6.5; not resumed until that phase ships.**
 
 ### Phase 5 — UX Refinement from Coach QA Feedback ✅ COMPLETE (2026-06-23)
 
@@ -174,9 +178,37 @@ Until this phase, every page rendered its own hardcoded "pctmt" header and the a
 
 **Scoped out of this pass, left for later:** translating the rest of the app's hardcoded Spanish strings (forms, list pages, etc.) into the ES/EN dictionary — the language switcher currently only covers navigation, chrome, and the settings page. Per-coach branding only covers name/logo/color; logo upload (vs. pasting a URL) is not built.
 
+### Phase 6.5 — Coaching Depth & Product Polish (pre-monetization)
+
+Inserted deliberately, not part of the original plan. Decision made 2026-06-25: Stripe, Playtomic, and PWA (Phase 7) are frozen until the product itself feels like a near-finished early-access tool a coach *wants* to use — not a demo. Guided throughout by `docs/voz-del-entrenador.md`.
+
+Two tracks run in sequence, plus a parallel hardening track, in this deliberate order: UX foundations ship first so the coaching-depth features inherit a polished base instead of needing rework later.
+
+**Track A — UX foundations (build first)**
+- [ ] Empty states designed per module (no blank screens on first use)
+- [ ] Consistent loading skeletons across all views
+- [ ] Toast/snackbar feedback system for every create/update/delete
+- [ ] Undo window on destructive actions (delete player, session, series)
+- [ ] Error boundaries per section
+- [ ] Offline-tolerant note-saving for courtside use on unreliable wifi
+- [ ] Global search across players, sessions, and strategies
+
+**Track B — Coaching depth (build on the Track A foundation)**
+- [ ] Tactical taxonomy: concept tags on strategies and training blocks (paralelo / diagonal / transición / red / fondo) and decision-type tags (técnica / táctica / bajo presión) — seeded from the glossary in `voz-del-entrenador.md`
+- [ ] Player trajectory view: longitudinal timeline per player (what was worked on, what changed, milestones), not just the current snapshot
+- [ ] Pair (sociedad) as a first-class entity — tactical patterns and progress tracked for a pairing, not only for each player separately
+- [ ] Explicit session → plan-phase linkage surfaced in the session UI, not just modeled in the data
+
+**Track C — Architecture hardening (parallel, lower priority)**
+- [ ] RLS policy audit across all tables
+- [ ] Query audit for N+1 patterns on dashboard/calendar/player history
+- [ ] Test coverage for recurring-series scope logic (highest-risk code in the app)
+
+**Explicitly on hold until this phase ships:** Stripe, Playtomic (Phase 4C), PWA, and everything else listed under Phase 7.
+
 ### Phase 7 — Monetization + Retention
 
-To be refined based on real coach feedback. This phase turns the product into a business.
+To be refined based on real coach feedback. This phase turns the product into a business. **On hold until Phase 6.5 ships — see above.**
 
 - [ ] **Stripe integration** — enforce Free (≤5 players) vs Pro (unlimited) plans; subscription billing, cancel anytime
 - [ ] **Landing page** — standalone marketing page with value proposition, screenshots, pricing table, and sign-up CTA (separate from the app)
@@ -212,4 +244,4 @@ To be refined based on real coach feedback. This phase turns the product into a 
 
 A coach subscribes because the tool makes them look professional in front of their players. The specific moment: coach pulls out their phone mid-session, opens the shared player profile for María, and shows her the progress chart — endurance up 18 points over 4 months, attendance at 92%, semifinal at the last competition. The page carries the coach's own name and color, not "pctmt." María sees her own trajectory under her coach's brand. That justifies both the coaching fee and the pctmt subscription.
 
-This moment is fully live in production. Everything in the remaining roadmap either enables it further or makes it happen faster.
+This moment was fully live in production as of Phase 6. Phase 6.5 deepens it — trajectory becomes longitudinal and tactical, not just a snapshot — before Phase 7 turns it into a business.
