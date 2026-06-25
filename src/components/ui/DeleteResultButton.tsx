@@ -1,6 +1,7 @@
 'use client'
 
 import { deleteResult } from '@/app/actions/tournaments'
+import { ConfirmDeleteButton } from '@/components/ui/ConfirmDeleteButton'
 
 export function DeleteResultButton({
   resultId,
@@ -11,17 +12,12 @@ export function DeleteResultButton({
   tournamentId: string
   playerName: string
 }) {
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    if (!confirm(`¿Eliminar el resultado de ${playerName}?`)) {
-      e.preventDefault()
-    }
-  }
-
   return (
-    <form action={deleteResult.bind(null, resultId, tournamentId)} onSubmit={handleSubmit}>
-      <button type="submit" className="text-xs text-red-400 hover:text-red-600 transition-colors">
-        Eliminar
-      </button>
-    </form>
+    <ConfirmDeleteButton
+      label="Eliminar"
+      pendingMessage={`Resultado de ${playerName} se eliminará.`}
+      onConfirm={() => deleteResult(resultId, tournamentId)}
+      className="text-xs text-red-400 hover:text-red-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+    />
   )
 }
