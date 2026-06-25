@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const LEVEL_LABEL: Record<string, string> = {
   beginner: 'Iniciación',
@@ -62,13 +63,11 @@ export default async function PlayersPage() {
           ))}
         </ul>
       ) : (
-        <div className="text-center py-20 text-muted-foreground">
-          <p className="text-4xl mb-4">🎾</p>
-          <p className="text-sm">Todavía no hay jugadores.</p>
-          <Link href="/players/new" className="text-sm text-foreground underline mt-2 inline-block">
-            Añade el primero
-          </Link>
-        </div>
+        <EmptyState
+          icon="🎾"
+          title="Todavía no hay jugadores."
+          action={{ href: '/players/new', label: 'Añade el primero' }}
+        />
       )}
     </main>
   )

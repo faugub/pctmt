@@ -5,6 +5,7 @@ import { DeletePlayerButton } from '@/components/ui/DeletePlayerButton'
 import { DeleteSnapshotButton } from '@/components/ui/DeleteSnapshotButton'
 import { ProgressChart } from '@/components/ui/ProgressChart'
 import { SharePanel } from '@/components/ui/SharePanel'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const LEVEL_LABEL: Record<string, string> = {
   beginner: 'Iniciación',
@@ -219,13 +220,11 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             ))}
           </ul>
         ) : (
-          <div className="text-center py-10 text-muted-foreground bg-card border border-border rounded-2xl">
-            <p className="text-3xl mb-2">📊</p>
-            <p className="text-sm">Sin snapshots todavía.</p>
-            <Link href={`/players/${id}/snapshots/new`} className="text-sm text-foreground underline mt-1 inline-block">
-              Registrar el primero
-            </Link>
-          </div>
+          <EmptyState
+            icon="📊"
+            title="Sin snapshots todavía."
+            action={{ href: `/players/${id}/snapshots/new`, label: 'Registrar el primero' }}
+          />
         )}
       </div>
 
@@ -261,9 +260,7 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
             })}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground text-center py-6 bg-card border border-border rounded-2xl">
-            No ha participado en ninguna sesión todavía.
-          </p>
+          <EmptyState icon="📅" title="No ha participado en ninguna sesión todavía." />
         )}
       </div>
 

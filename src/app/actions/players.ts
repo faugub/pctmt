@@ -21,7 +21,7 @@ export async function createPlayer(formData: FormData) {
   const { error } = await supabase.from('players').insert(payload)
   if (error) throw new Error(error.message)
 
-  redirect('/players')
+  redirect(`/players?notice=${encodeURIComponent('Jugador creado')}&notice_variant=success`)
 }
 
 export async function updatePlayer(id: string, formData: FormData) {
@@ -41,7 +41,7 @@ export async function updatePlayer(id: string, formData: FormData) {
   const { error } = await supabase.from('players').update(payload).eq('id', id).eq('coach_id', user.id)
   if (error) throw new Error(error.message)
 
-  redirect(`/players/${id}`)
+  redirect(`/players/${id}?notice=${encodeURIComponent('Cambios guardados')}&notice_variant=success`)
 }
 
 export async function deletePlayer(id: string) {

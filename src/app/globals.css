@@ -10,6 +10,10 @@
   --muted-foreground: #6b7280;
   --primary: #16a34a;
   --primary-foreground: #ffffff;
+  --success: #16a34a;
+  --success-foreground: #ffffff;
+  --danger: #dc2626;
+  --danger-foreground: #ffffff;
 }
 
 .dark {
@@ -22,6 +26,10 @@
   --muted-foreground: #a1a1aa;
   --primary: #22c55e;
   --primary-foreground: #052e16;
+  --success: #22c55e;
+  --success-foreground: #052e16;
+  --danger: #f87171;
+  --danger-foreground: #450a0a;
 }
 
 @theme inline {
@@ -34,6 +42,10 @@
   --color-muted-foreground: var(--muted-foreground);
   --color-primary: var(--primary);
   --color-primary-foreground: var(--primary-foreground);
+  --color-success: var(--success);
+  --color-success-foreground: var(--success-foreground);
+  --color-danger: var(--danger);
+  --color-danger-foreground: var(--danger-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }

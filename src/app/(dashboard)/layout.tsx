@@ -1,9 +1,11 @@
+import { Suspense } from 'react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getLocale } from '@/lib/i18n/getLocale'
 import { dictionaries } from '@/lib/i18n/dictionaries'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
+import { ToastListener } from '@/components/ui/ToastListener'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -47,6 +49,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
           brandLogoUrl={brandLogoUrl}
           displayName={coach?.full_name ?? user.email ?? ''}
         />
+        <Suspense fallback={null}>
+          <ToastListener />
+        </Suspense>
         <main className="flex-1">{children}</main>
       </div>
     </div>
