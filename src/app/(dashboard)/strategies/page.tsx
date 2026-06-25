@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const ZONE_LABEL: Record<string, string> = {
   red:      'Red',
@@ -101,13 +102,11 @@ export default async function StrategiesPage({
           ))}
         </ul>
       ) : (
-        <div className="text-center py-20 text-muted-foreground">
-          <p className="text-4xl mb-4">🧠</p>
-          <p className="text-sm">{zone ? `No hay estrategias en ${ZONE_LABEL[zone] ?? zone}.` : 'La biblioteca está vacía.'}</p>
-          <Link href="/strategies/new" className="text-sm text-foreground underline mt-2 inline-block">
-            Añade la primera
-          </Link>
-        </div>
+        <EmptyState
+          icon="🧠"
+          title={zone ? `No hay estrategias en ${ZONE_LABEL[zone] ?? zone}.` : 'La biblioteca está vacía.'}
+          action={{ href: '/strategies/new', label: 'Añade la primera' }}
+        />
       )}
     </main>
   )

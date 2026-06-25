@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const TYPE_LABEL: Record<string, string> = {
   warmup:    'Calentamiento',
@@ -107,13 +108,11 @@ export default async function BlocksPage({
           ))}
         </ul>
       ) : (
-        <div className="text-center py-20 text-muted-foreground">
-          <p className="text-4xl mb-4">🏃</p>
-          <p className="text-sm">{type ? `No hay bloques de tipo ${TYPE_LABEL[type] ?? type}.` : 'La biblioteca está vacía.'}</p>
-          <Link href="/blocks/new" className="text-sm text-foreground underline mt-2 inline-block">
-            Añade el primero
-          </Link>
-        </div>
+        <EmptyState
+          icon="🏃"
+          title={type ? `No hay bloques de tipo ${TYPE_LABEL[type] ?? type}.` : 'La biblioteca está vacía.'}
+          action={{ href: '/blocks/new', label: 'Añade el primero' }}
+        />
       )}
     </main>
   )

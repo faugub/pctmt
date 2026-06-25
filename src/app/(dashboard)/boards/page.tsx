@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-ES', {
@@ -59,13 +60,11 @@ export default async function BoardsPage() {
           })}
         </ul>
       ) : (
-        <div className="text-center py-20 text-muted-foreground">
-          <p className="text-4xl mb-4">🎾</p>
-          <p className="text-sm">Todavía no hay pizarras.</p>
-          <Link href="/boards/new" className="text-sm text-foreground underline mt-2 inline-block">
-            Crea la primera
-          </Link>
-        </div>
+        <EmptyState
+          icon="🎾"
+          title="Todavía no hay pizarras."
+          action={{ href: '/boards/new', label: 'Crea la primera' }}
+        />
       )}
     </main>
   )

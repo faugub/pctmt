@@ -45,3 +45,14 @@ export function SkeletonPageHeader() {
     </div>
   )
 }
+
+/** Filter-chip row skeleton, for list pages that have a category/zone filter below the header. */
+export function SkeletonChipRow({ count = 4 }: { count?: number }) {
+  return (
+    <div className="flex gap-2 mb-8 flex-wrap">
+      {Array.from({ length: count }).map((_, i) => (
+        <Skeleton key={i} className="h-7 w-20 rounded-full" />
+      ))}
+    </div>
+  )
+}

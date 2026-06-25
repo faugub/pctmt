@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const STATUS_LABEL: Record<string, string> = {
   active: 'Activo',
@@ -98,13 +99,11 @@ export default async function PlansPage() {
           ))}
         </ul>
       ) : (
-        <div className="text-center py-20 text-muted-foreground">
-          <p className="text-4xl mb-4">🗺️</p>
-          <p className="text-sm">Todavía no tienes planes de trabajo.</p>
-          <Link href="/plans/new" className="text-sm text-foreground underline mt-2 inline-block">
-            Crea el primero
-          </Link>
-        </div>
+        <EmptyState
+          icon="🗺️"
+          title="Todavía no tienes planes de trabajo."
+          action={{ href: '/plans/new', label: 'Crea el primero' }}
+        />
       )}
     </main>
   )

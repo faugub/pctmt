@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 const TYPE_LABEL: Record<string, string> = {
   technical: 'Técnica',
@@ -65,13 +66,11 @@ export default async function SessionsPage() {
           ))}
         </ul>
       ) : (
-        <div className="text-center py-20 text-muted-foreground">
-          <p className="text-4xl mb-4">📋</p>
-          <p className="text-sm">Todavía no hay sesiones.</p>
-          <Link href="/sessions/new" className="text-sm text-foreground underline mt-2 inline-block">
-            Crea la primera
-          </Link>
-        </div>
+        <EmptyState
+          icon="📋"
+          title="Todavía no hay sesiones."
+          action={{ href: '/sessions/new', label: 'Crea la primera' }}
+        />
       )}
     </main>
   )

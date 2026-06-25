@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
+import { EmptyState } from '@/components/ui/EmptyState'
 
 function formatDate(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('es-ES', {
@@ -60,14 +61,12 @@ export default async function TournamentsPage() {
           ))}
         </ul>
       ) : (
-        <div className="text-center py-20 text-muted-foreground">
-          <p className="text-4xl mb-4">🏆</p>
-          <p className="text-sm">Todavía no hay competencias registradas.</p>
-          <p className="text-xs mt-1">No organizas el torneo — solo registras dónde compitió cada alumno y qué logró.</p>
-          <Link href="/tournaments/new" className="text-sm text-foreground underline mt-2 inline-block">
-            Registra la primera
-          </Link>
-        </div>
+        <EmptyState
+          icon="🏆"
+          title="Todavía no hay competencias registradas."
+          description="No organizas el torneo — solo registras dónde compitió cada alumno y qué logró."
+          action={{ href: '/tournaments/new', label: 'Registra la primera' }}
+        />
       )}
     </main>
   )
