@@ -23,6 +23,7 @@ export interface Dictionary {
     settings: string
   }
   header: {
+    search: string
     logout: string
     theme_light: string
     theme_dark: string
@@ -64,6 +65,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       settings: 'Ajustes',
     },
     header: {
+      search: 'Buscar',
       logout: 'Salir',
       theme_light: 'Modo claro',
       theme_dark: 'Modo oscuro',
@@ -103,6 +105,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       settings: 'Settings',
     },
     header: {
+      search: 'Search',
       logout: 'Log out',
       theme_light: 'Light mode',
       theme_dark: 'Dark mode',

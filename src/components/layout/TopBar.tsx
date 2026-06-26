@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { ThemeToggle } from '@/components/ui/ThemeToggle'
 import { LanguageSwitcher } from '@/components/ui/LanguageSwitcher'
 import { MobileNav } from './MobileNav'
@@ -27,6 +28,14 @@ export function TopBar({ dict, locale, brandLabel, brandLogoUrl, displayName }: 
       </div>
 
       <div className="flex items-center gap-2">
+        <Link
+          href="/search"
+          aria-label={dict.header.search}
+          title={dict.header.search}
+          className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+        >
+          <span className="text-lg" aria-hidden>🔎</span>
+        </Link>
         <LanguageSwitcher locale={locale} label={dict.header.language} />
         <ThemeToggle labelLight={dict.header.theme_light} labelDark={dict.header.theme_dark} />
         <span className="hidden sm:inline text-sm text-muted-foreground px-1">{displayName}</span>
