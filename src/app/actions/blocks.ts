@@ -34,7 +34,7 @@ export async function createBlock(formData: FormData) {
 
   if (error || !block) throw new Error(error?.message ?? 'Error creating training block')
 
-  redirect(`/blocks/${block.id}`)
+  redirect(`/blocks/${block.id}?notice=${encodeURIComponent('Bloque creado')}&notice_variant=success`)
 }
 
 export async function updateBlock(id: string, formData: FormData) {
@@ -60,7 +60,7 @@ export async function updateBlock(id: string, formData: FormData) {
 
   if (error) throw new Error(error.message)
 
-  redirect(`/blocks/${id}`)
+  redirect(`/blocks/${id}?notice=${encodeURIComponent('Cambios guardados')}&notice_variant=success`)
 }
 
 export async function deleteBlock(id: string) {

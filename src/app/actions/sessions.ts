@@ -36,7 +36,7 @@ export async function createSession(formData: FormData) {
     if (spError) throw new Error(spError.message)
   }
 
-  redirect(`/sessions/${session.id}`)
+  redirect(`/sessions/${session.id}?notice=${encodeURIComponent('Sesión creada')}&notice_variant=success`)
 }
 
 export async function updateSession(id: string, formData: FormData) {
@@ -59,7 +59,7 @@ export async function updateSession(id: string, formData: FormData) {
 
   if (error) throw new Error(error.message)
 
-  redirect(`/sessions/${id}`)
+  redirect(`/sessions/${id}?notice=${encodeURIComponent('Cambios guardados')}&notice_variant=success`)
 }
 
 export async function updateAttendance(sessionId: string, playerId: string, attended: boolean) {

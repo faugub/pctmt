@@ -45,7 +45,7 @@ export async function createPlan(formData: FormData) {
   const { error: slotsError } = await supabase.from('plan_sessions').insert(slots)
   if (slotsError) throw new Error(slotsError.message)
 
-  redirect(`/plans/${plan.id}`)
+  redirect(`/plans/${plan.id}?notice=${encodeURIComponent('Plan creado')}&notice_variant=success`)
 }
 
 export async function updatePlan(id: string, formData: FormData) {
@@ -66,7 +66,7 @@ export async function updatePlan(id: string, formData: FormData) {
 
   if (error) throw new Error(error.message)
 
-  redirect(`/plans/${id}`)
+  redirect(`/plans/${id}?notice=${encodeURIComponent('Cambios guardados')}&notice_variant=success`)
 }
 
 export async function deletePlan(id: string) {

@@ -47,7 +47,7 @@ export async function createBoard(formData: FormData) {
 
   if (error || !board) throw new Error(error?.message ?? 'Error creating board')
 
-  redirect(`/boards/${board.id}`)
+  redirect(`/boards/${board.id}?notice=${encodeURIComponent('Pizarra creada')}&notice_variant=success`)
 }
 
 /**
@@ -83,7 +83,7 @@ export async function renameBoard(id: string, formData: FormData) {
 
   if (error) throw new Error(error.message)
 
-  redirect(`/boards/${id}`)
+  redirect(`/boards/${id}?notice=${encodeURIComponent('Nombre actualizado')}&notice_variant=success`)
 }
 
 export async function deleteBoard(id: string) {

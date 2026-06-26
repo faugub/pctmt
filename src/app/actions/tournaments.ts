@@ -23,7 +23,7 @@ export async function createTournament(formData: FormData) {
 
   if (error || !tournament) throw new Error(error?.message ?? 'Error creating tournament')
 
-  redirect(`/tournaments/${tournament.id}`)
+  redirect(`/tournaments/${tournament.id}?notice=${encodeURIComponent('Competencia creada')}&notice_variant=success`)
 }
 
 export async function updateTournament(id: string, formData: FormData) {
@@ -45,7 +45,7 @@ export async function updateTournament(id: string, formData: FormData) {
 
   if (error) throw new Error(error.message)
 
-  redirect(`/tournaments/${id}`)
+  redirect(`/tournaments/${id}?notice=${encodeURIComponent('Cambios guardados')}&notice_variant=success`)
 }
 
 export async function addResult(tournamentId: string, formData: FormData) {
@@ -65,7 +65,7 @@ export async function addResult(tournamentId: string, formData: FormData) {
 
   if (error) throw new Error(error.message)
 
-  redirect(`/tournaments/${tournamentId}`)
+  redirect(`/tournaments/${tournamentId}?notice=${encodeURIComponent('Resultado agregado')}&notice_variant=success`)
 }
 
 export async function deleteResult(resultId: string, tournamentId: string) {

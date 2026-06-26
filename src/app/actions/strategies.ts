@@ -29,7 +29,7 @@ export async function createStrategy(formData: FormData) {
 
   if (error || !strategy) throw new Error(error?.message ?? 'Error creating strategy')
 
-  redirect(`/strategies/${strategy.id}`)
+  redirect(`/strategies/${strategy.id}?notice=${encodeURIComponent('Estrategia creada')}&notice_variant=success`)
 }
 
 export async function updateStrategy(id: string, formData: FormData) {
@@ -50,7 +50,7 @@ export async function updateStrategy(id: string, formData: FormData) {
 
   if (error) throw new Error(error.message)
 
-  redirect(`/strategies/${id}`)
+  redirect(`/strategies/${id}?notice=${encodeURIComponent('Cambios guardados')}&notice_variant=success`)
 }
 
 export async function deleteStrategy(id: string) {

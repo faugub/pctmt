@@ -73,7 +73,7 @@ export async function createSeries(formData: FormData) {
 
   await generateSessionsForSeries(series.id)
 
-  redirect(`/calendar`)
+  redirect(`/calendar?notice=${encodeURIComponent('Serie creada')}&notice_variant=success`)
 }
 
 /**
@@ -242,7 +242,7 @@ export async function updateSeries(
     await generateSessionsForSeries(id)
   }
 
-  redirect('/calendar')
+  redirect(`/calendar?notice=${encodeURIComponent('Serie actualizada')}&notice_variant=success`)
 }
 
 /**

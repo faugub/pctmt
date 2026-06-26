@@ -37,7 +37,7 @@ export async function createSnapshot(playerId: string, formData: FormData) {
   const { error } = await supabase.from('player_snapshots').insert(payload)
   if (error) throw new Error(error.message)
 
-  redirect(`/players/${playerId}`)
+  redirect(`/players/${playerId}?notice=${encodeURIComponent('Snapshot registrado')}&notice_variant=success`)
 }
 
 export async function deleteSnapshot(snapshotId: string, playerId: string) {
