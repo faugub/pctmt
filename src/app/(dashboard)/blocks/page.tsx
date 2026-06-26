@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { CONCEPT_TAGS } from '@/lib/taxonomy'
 
 const TYPE_LABEL: Record<string, string> = {
   warmup:    'Calentamiento',
@@ -17,19 +18,20 @@ const TYPE_ORDER = ['warmup', 'technique', 'physical', 'tactical', 'match', 'coo
 export default async function BlocksPage({
   searchParams,
 }: {
-  searchParams: Promise<{ type?: string }>
+  searchParams: Promise<{ type?: string; concept?: string }>
 }) {
-  const { type } = await searchParams
+  const { type, concept } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   let query = supabase
     .from('training_blocks')
-    .select('id, title, block_type, duration_min, tags')
+    .select('id, title, block_type, duration_min, tags, concept_tags')
     .order('created_at', { ascending: false })
 
   if (type) query = query.eq('block_type', type)
+  if (concept) query = query.contains('concept_tags', [concept])
 
   const { data: blocks, error } = await query
   if (error) throw new Error(error.message)
@@ -50,24 +52,47 @@ export default async function BlocksPage({
       </div>
 
       {/* Type filter */}
-      <div className="flex gap-2 mb-8 flex-wrap">
+      <div className="flex gap-2 mb-3 flex-wrap">
         <Link
-          href="/blocks"
+          href={concept ? `/blocks?concept=${encodeURIComponent(concept)}` : '/blocks'}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             !type ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
           }`}
         >
-          Todos
+          Todos los tipos
         </Link>
         {TYPE_ORDER.map((t) => (
           <Link
             key={t}
-            href={`/blocks?type=${t}`}
+            href={`/blocks?type=${t}${concept ? `&concept=${encodeURIComponent(concept)}` : ''}`}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               type === t ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
             }`}
           >
             {TYPE_LABEL[t]}
+          </Link>
+        ))}
+      </div>
+
+      {/* Concept filter — "¿cuánto venimos trabajando paralelo?" */}
+      <div className="flex gap-2 mb-8 flex-wrap">
+        <Link
+          href={type ? `/blocks?type=${type}` : '/blocks'}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            !concept ? 'bg-amber-600 text-white' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
+          }`}
+        >
+          Todos los conceptos
+        </Link>
+        {CONCEPT_TAGS.map((c) => (
+          <Link
+            key={c}
+            href={`/blocks?concept=${encodeURIComponent(c)}${type ? `&type=${type}` : ''}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              concept === c ? 'bg-amber-600 text-white' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            {c}
           </Link>
         ))}
       </div>
@@ -90,6 +115,16 @@ export default async function BlocksPage({
                         <span className="text-xs text-muted-foreground">{b.duration_min} min</span>
                       </>
                     )}
+                    {b.concept_tags && (b.concept_tags as string[]).length > 0 && (
+                      <>
+                        <span className="text-border">·</span>
+                        {(b.concept_tags as string[]).map((tag) => (
+                          <span key={tag} className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">
+                            {tag}
+                          </span>
+                        ))}
+                      </>
+                    )}
                     {b.tags && b.tags.length > 0 && (
                       <>
                         <span className="text-border">·</span>
@@ -110,7 +145,11 @@ export default async function BlocksPage({
       ) : (
         <EmptyState
           icon="🏃"
-          title={type ? `No hay bloques de tipo ${TYPE_LABEL[type] ?? type}.` : 'La biblioteca está vacía.'}
+          title={
+            concept ? `No hay bloques con "${concept}".`
+            : type ? `No hay bloques de tipo ${TYPE_LABEL[type] ?? type}.`
+            : 'La biblioteca está vacía.'
+          }
           action={{ href: '/blocks/new', label: 'Añade el primero' }}
         />
       )}

@@ -28,6 +28,8 @@ export async function createBlock(formData: FormData) {
       duration_min: durationRaw ? parseInt(durationRaw, 10) : null,
       tags: parseTags((formData.get('tags') as string) ?? ''),
       strategy_id: strategyRaw || null,
+      concept_tags: formData.getAll('concept_tags') as string[],
+      decision_tags: formData.getAll('decision_tags') as string[],
     })
     .select('id')
     .single()
@@ -54,6 +56,8 @@ export async function updateBlock(id: string, formData: FormData) {
       duration_min: durationRaw ? parseInt(durationRaw, 10) : null,
       tags: parseTags((formData.get('tags') as string) ?? ''),
       strategy_id: strategyRaw || null,
+      concept_tags: formData.getAll('concept_tags') as string[],
+      decision_tags: formData.getAll('decision_tags') as string[],
     })
     .eq('id', id)
     .eq('coach_id', user.id)

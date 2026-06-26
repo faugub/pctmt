@@ -27,6 +27,8 @@ export default async function BlockPage({ params }: { params: Promise<{ id: stri
   if (error || !block) notFound()
 
   const linkedStrategy = block.strategies as { id: string; title: string } | null
+  const conceptTags = (block.concept_tags as string[] | null) ?? []
+  const decisionTags = (block.decision_tags as string[] | null) ?? []
 
   return (
     <main className="max-w-lg mx-auto px-6 py-10 space-y-8">
@@ -48,6 +50,16 @@ export default async function BlockPage({ params }: { params: Promise<{ id: stri
                 {block.duration_min} min
               </span>
             )}
+            {conceptTags.map((tag) => (
+              <span key={tag} className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">
+                {tag}
+              </span>
+            ))}
+            {decisionTags.map((tag) => (
+              <span key={tag} className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded-full text-xs">
+                {tag}
+              </span>
+            ))}
             {block.tags && (block.tags as string[]).map((tag: string) => (
               <span key={tag} className="px-2 py-0.5 bg-blue-50 text-blue-600 rounded-full text-xs">
                 {tag}

@@ -5,6 +5,7 @@ export default function BlocksLoading() {
     <main className="max-w-3xl mx-auto px-6 py-10">
       <SkeletonPageHeader />
       <SkeletonChipRow count={7} />
+      <SkeletonChipRow count={10} />
       <SkeletonList count={6} />
     </main>
   )

@@ -34,6 +34,8 @@ export default async function EditStrategyPage({ params }: { params: Promise<{ i
             court_zone: strategy.court_zone,
             description: strategy.description,
             tags: strategy.tags as string[],
+            concept_tags: strategy.concept_tags as string[],
+            decision_tags: strategy.decision_tags as string[],
           }}
           submitLabel="Guardar cambios"
         />

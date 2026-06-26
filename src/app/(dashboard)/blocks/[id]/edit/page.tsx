@@ -42,6 +42,8 @@ export default async function EditBlockPage({ params }: { params: Promise<{ id: 
             duration_min: block.duration_min,
             tags: block.tags as string[],
             strategy_id: block.strategy_id,
+            concept_tags: block.concept_tags as string[],
+            decision_tags: block.decision_tags as string[],
           }}
           submitLabel="Guardar cambios"
         />

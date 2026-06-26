@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { EmptyState } from '@/components/ui/EmptyState'
+import { CONCEPT_TAGS } from '@/lib/taxonomy'
 
 const ZONE_LABEL: Record<string, string> = {
   red:      'Red',
@@ -15,19 +16,20 @@ const ZONE_ORDER = ['red', 'midcourt', 'back', 'full']
 export default async function StrategiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ zone?: string }>
+  searchParams: Promise<{ zone?: string; concept?: string }>
 }) {
-  const { zone } = await searchParams
+  const { zone, concept } = await searchParams
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
   let query = supabase
     .from('strategies')
-    .select('id, title, court_zone, tags')
+    .select('id, title, court_zone, tags, concept_tags')
     .order('created_at', { ascending: false })
 
   if (zone) query = query.eq('court_zone', zone)
+  if (concept) query = query.contains('concept_tags', [concept])
 
   const { data: strategies, error } = await query
   if (error) throw new Error(error.message)
@@ -48,24 +50,47 @@ export default async function StrategiesPage({
       </div>
 
       {/* Zone filter */}
-      <div className="flex gap-2 mb-8 flex-wrap">
+      <div className="flex gap-2 mb-3 flex-wrap">
         <Link
-          href="/strategies"
+          href={concept ? `/strategies?concept=${encodeURIComponent(concept)}` : '/strategies'}
           className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
             !zone ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
           }`}
         >
-          Todas
+          Todas las zonas
         </Link>
         {ZONE_ORDER.map((z) => (
           <Link
             key={z}
-            href={`/strategies?zone=${z}`}
+            href={`/strategies?zone=${z}${concept ? `&concept=${encodeURIComponent(concept)}` : ''}`}
             className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
               zone === z ? 'bg-primary text-primary-foreground' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
             }`}
           >
             {ZONE_LABEL[z]}
+          </Link>
+        ))}
+      </div>
+
+      {/* Concept filter — "¿cuánto venimos trabajando paralelo?" */}
+      <div className="flex gap-2 mb-8 flex-wrap">
+        <Link
+          href={zone ? `/strategies?zone=${zone}` : '/strategies'}
+          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            !concept ? 'bg-amber-600 text-white' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
+          }`}
+        >
+          Todos los conceptos
+        </Link>
+        {CONCEPT_TAGS.map((c) => (
+          <Link
+            key={c}
+            href={`/strategies?concept=${encodeURIComponent(c)}${zone ? `&zone=${zone}` : ''}`}
+            className={`px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              concept === c ? 'bg-amber-600 text-white' : 'bg-card border border-border text-muted-foreground hover:bg-muted'
+            }`}
+          >
+            {c}
           </Link>
         ))}
       </div>
@@ -84,9 +109,19 @@ export default async function StrategiesPage({
                     {s.court_zone && (
                       <span className="text-xs text-muted-foreground">{ZONE_LABEL[s.court_zone] ?? s.court_zone}</span>
                     )}
-                    {s.tags && s.tags.length > 0 && (
+                    {s.concept_tags && (s.concept_tags as string[]).length > 0 && (
                       <>
                         {s.court_zone && <span className="text-border">·</span>}
+                        {(s.concept_tags as string[]).map((tag) => (
+                          <span key={tag} className="px-2 py-0.5 bg-amber-50 text-amber-700 rounded-full text-xs">
+                            {tag}
+                          </span>
+                        ))}
+                      </>
+                    )}
+                    {s.tags && s.tags.length > 0 && (
+                      <>
+                        {(s.court_zone || (s.concept_tags as string[])?.length) && <span className="text-border">·</span>}
                         {(s.tags as string[]).map((tag) => (
                           <span key={tag} className="px-2 py-0.5 bg-muted text-muted-foreground rounded-full text-xs">
                             {tag}
@@ -104,7 +139,11 @@ export default async function StrategiesPage({
       ) : (
         <EmptyState
           icon="🧠"
-          title={zone ? `No hay estrategias en ${ZONE_LABEL[zone] ?? zone}.` : 'La biblioteca está vacía.'}
+          title={
+            concept ? `No hay estrategias con "${concept}".`
+            : zone ? `No hay estrategias en ${ZONE_LABEL[zone] ?? zone}.`
+            : 'La biblioteca está vacía.'
+          }
           action={{ href: '/strategies/new', label: 'Añade la primera' }}
         />
       )}

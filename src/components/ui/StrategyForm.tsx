@@ -1,5 +1,8 @@
 'use client'
 
+import { TaxonomyTagPicker } from '@/components/ui/TaxonomyTagPicker'
+import { CONCEPT_TAGS, DECISION_TAGS } from '@/lib/taxonomy'
+
 const ZONES = [
   { value: 'red',      label: 'Red' },
   { value: 'midcourt', label: 'Mediocampo' },
@@ -12,6 +15,8 @@ type DefaultValues = {
   court_zone?: string | null
   description?: string | null
   tags?: string[] | null
+  concept_tags?: string[] | null
+  decision_tags?: string[] | null
 }
 
 export function StrategyForm({
@@ -65,6 +70,23 @@ export function StrategyForm({
           className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none"
         />
       </div>
+
+      <TaxonomyTagPicker
+        name="concept_tags"
+        label="Concepto táctico"
+        options={CONCEPT_TAGS}
+        defaultValue={defaultValues.concept_tags ?? []}
+        activeClassName="bg-amber-600 text-white border-amber-600"
+        helpText="¿Qué concepto trabaja esta jugada? Esto es lo que después te permite ver cuánto venís trabajando cada cosa."
+      />
+
+      <TaxonomyTagPicker
+        name="decision_tags"
+        label="Tipo de decisión"
+        options={DECISION_TAGS}
+        defaultValue={defaultValues.decision_tags ?? []}
+        activeClassName="bg-purple-600 text-white border-purple-600"
+      />
 
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-1">Etiquetas</label>

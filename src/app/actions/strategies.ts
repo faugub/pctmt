@@ -23,6 +23,8 @@ export async function createStrategy(formData: FormData) {
       court_zone: (formData.get('court_zone') as string) || null,
       description: (formData.get('description') as string) || null,
       tags: parseTags(formData.get('tags') as string ?? ''),
+      concept_tags: formData.getAll('concept_tags') as string[],
+      decision_tags: formData.getAll('decision_tags') as string[],
     })
     .select('id')
     .single()
@@ -44,6 +46,8 @@ export async function updateStrategy(id: string, formData: FormData) {
       court_zone: (formData.get('court_zone') as string) || null,
       description: (formData.get('description') as string) || null,
       tags: parseTags(formData.get('tags') as string ?? ''),
+      concept_tags: formData.getAll('concept_tags') as string[],
+      decision_tags: formData.getAll('decision_tags') as string[],
     })
     .eq('id', id)
     .eq('coach_id', user.id)
