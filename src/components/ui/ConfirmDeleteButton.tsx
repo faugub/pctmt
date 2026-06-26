@@ -13,6 +13,10 @@ type Props = {
   /** How long the coach has to hit "Deshacer" before the delete actually runs. */
   undoWindowMs?: number
   className?: string
+  /** Forces the button disabled regardless of its own pending state — e.g. a sibling destructive action is already armed. */
+  disabled?: boolean
+  /** Fires with `true` when this button arms its undo window, `false` when it cancels/settles. Lets a parent disable sibling destructive actions while one is pending. */
+  onPendingChange?: (pending: boolean) => void
 }
 
 const DEFAULT_UNDO_WINDOW_MS = 5000
@@ -33,11 +37,24 @@ function isRedirectSignal(err: unknown): boolean {
  * it immediately, and shows a toast with a "Deshacer" action that cancels
  * it. Nothing is removed from the list until the window elapses.
  */
-export function ConfirmDeleteButton({ onConfirm, label, pendingMessage, undoWindowMs = DEFAULT_UNDO_WINDOW_MS, className }: Props) {
+export function ConfirmDeleteButton({
+  onConfirm,
+  label,
+  pendingMessage,
+  undoWindowMs = DEFAULT_UNDO_WINDOW_MS,
+  className,
+  disabled = false,
+  onPendingChange,
+}: Props) {
   const { toast, dismiss } = useToast()
   const [pending, setPending] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const toastIdRef = useRef<string | null>(null)
+
+  const setPendingState = (value: boolean) => {
+    setPending(value)
+    onPendingChange?.(value)
+  }
 
   useEffect(() => {
     return () => {
@@ -48,11 +65,11 @@ export function ConfirmDeleteButton({ onConfirm, label, pendingMessage, undoWind
   const cancel = () => {
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = null
-    setPending(false)
+    setPendingState(false)
   }
 
   const handleClick = () => {
-    setPending(true)
+    setPendingState(true)
 
     timerRef.current = setTimeout(async () => {
       try {
@@ -62,7 +79,7 @@ export function ConfirmDeleteButton({ onConfirm, label, pendingMessage, undoWind
         // if it also rethrows the redirect signal to us, just let it be —
         // there's nothing useful to do with it here.
         if (isRedirectSignal(err)) return
-        setPending(false)
+        setPendingState(false)
         if (toastIdRef.current) dismiss(toastIdRef.current)
         toast({
           description: 'No se pudo eliminar. Probá de nuevo.',
@@ -83,7 +100,7 @@ export function ConfirmDeleteButton({ onConfirm, label, pendingMessage, undoWind
     <button
       type="button"
       onClick={handleClick}
-      disabled={pending}
+      disabled={pending || disabled}
       className={
         className ??
         'w-full py-2.5 text-sm text-red-500 border border-red-100 rounded-lg hover:bg-red-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
