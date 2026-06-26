@@ -63,8 +63,8 @@ Payments via Stripe. Subscription billed monthly, cancel anytime. Stripe integra
 | **Language** | ES/EN switcher for the app's navigation/chrome | ✅ Live (infra) — full-app string coverage ongoing |
 | **Branding** | Per-coach name, logo, primary color — shown in-app and on shared player profiles | ✅ Live |
 | **Navigation** | Grouped sidebar + topbar, replacing the old per-page header | ✅ Live |
-| **Tactical taxonomy** | Concept tags (paralelo/diagonal/transición/etc.) on strategies and blocks; player trajectory view; pair-as-entity | 🔜 Phase 6.5 |
-| **UX foundations** | Empty states, loading skeletons, toasts, undo, offline-tolerant notes, global search | 🔜 Phase 6.5 |
+| **UX foundations** | Empty states, loading skeletons, toasts, undo, offline-tolerant notes, global search | ✅ Live (Track A, 2026-06-26) |
+| **Tactical taxonomy** | Concept tags (paralelo/diagonal/transición/etc.) on strategies and blocks; player trajectory view; pair-as-entity | 🔜 Phase 6.5 — Track B |
 | **Playtomic sync** | Import club bookings from Playtomic, convert to sessions in one click | ⏳ Phase 7 |
 | **Stripe** | Free + Pro plan enforcement, subscription billing | ⏳ Phase 7 |
 | **PWA** | Offline support, installable on mobile, push notifications | ⏳ Phase 7 |
@@ -184,14 +184,16 @@ Inserted deliberately, not part of the original plan. Decision made 2026-06-25: 
 
 Two tracks run in sequence, plus a parallel hardening track, in this deliberate order: UX foundations ship first so the coaching-depth features inherit a polished base instead of needing rework later.
 
-**Track A — UX foundations (build first)**
-- [ ] Empty states designed per module (no blank screens on first use)
-- [ ] Consistent loading skeletons across all views
-- [ ] Toast/snackbar feedback system for every create/update/delete
-- [ ] Undo window on destructive actions (delete player, session, series)
-- [ ] Error boundaries per section
-- [ ] Offline-tolerant note-saving for courtside use on unreliable wifi
-- [ ] Global search across players, sessions, and strategies
+**Track A — UX foundations ✅ COMPLETE (2026-06-26)**
+- [x] Empty states designed per module (no blank screens on first use) — all 7 top-level list pages
+- [x] Consistent loading skeletons across all views — same 7 list pages, plus `/search`
+- [x] Toast/snackbar feedback system for every create/update/delete — `ToastProvider` + `ToastListener`, wired through every module's create/update redirects. (Exception: `saveBoardData` autosave and the granular `revalidatePath`-based plan actions — addPhase, updatePlanSession, etc. — intentionally don't toast; see `architecture.md`.)
+- [x] Undo window on destructive actions (delete player, session, series) — `ConfirmDeleteButton` replaces every `window.confirm()` in the app, including the scoped this/future/all session and series deletes. Mutual-exclusion guard (`disabled`/`onPendingChange` props) prevents arming two overlapping scoped deletes at once.
+- [x] Error boundaries per section — one `error.tsx` for the whole `(dashboard)` segment
+- [x] Offline-tolerant note-saving for courtside use on unreliable wifi — `AutosavingTextarea`, applied to session objectives/notes. Deliberately local-only (no sync queue/service worker — that's Phase 7 PWA territory)
+- [x] Global search across players, sessions, and strategies — `/search`, expanded to cover every module (players, sessions, series, strategies, blocks, plans, boards, tournaments), plain GET form so it works without JS on a bad connection
+
+**Bug found and fixed along the way:** `/series` had been a 404 since whenever the sidebar link was added — only `series/[id]/edit` and `series/new` existed, no list page. Added `series/page.tsx` + `loading.tsx`.
 
 **Track B — Coaching depth (build on the Track A foundation)**
 - [ ] Tactical taxonomy: concept tags on strategies and training blocks (paralelo / diagonal / transición / red / fondo) and decision-type tags (técnica / táctica / bajo presión) — seeded from the glossary in `voz-del-entrenador.md`
