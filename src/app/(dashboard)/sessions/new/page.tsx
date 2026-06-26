@@ -21,7 +21,7 @@ export default async function NewSessionPage() {
       </Link>
       <h1 className="text-2xl font-semibold text-foreground mt-4 mb-8">Nueva sesión</h1>
       <div className="bg-card border border-border rounded-2xl shadow-sm p-6">
-        <SessionForm action={createSession} players={players ?? []} />
+        <SessionForm action={createSession} players={players ?? []} draftKey="new" />
       </div>
     </main>
   )

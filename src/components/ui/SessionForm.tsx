@@ -1,11 +1,6 @@
 'use client'
 
-const ZONES = [
-  { value: 'red',      label: 'Red' },
-  { value: 'midcourt', label: 'Mediocampo' },
-  { value: 'back',     label: 'Fondo' },
-  { value: 'full',     label: 'Campo completo' },
-]
+import { AutosavingTextarea } from '@/components/ui/AutosavingTextarea'
 
 const SESSION_TYPES = [
   { value: 'technical', label: 'Técnica' },
@@ -31,11 +26,14 @@ export function SessionForm({
   players,
   defaultValues = {},
   submitLabel = 'Crear sesión',
+  draftKey,
 }: {
   action: (formData: FormData) => Promise<void>
   players: Player[]
   defaultValues?: DefaultValues
   submitLabel?: string
+  /** Unique per session, e.g. the session id, or "new" on the create form. Powers the offline-tolerant notes/objectives drafts below. */
+  draftKey: string
 }) {
   return (
     <form action={action} className="space-y-5">
@@ -94,27 +92,21 @@ export function SessionForm({
         </select>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Objetivos</label>
-        <textarea
-          name="objectives"
-          rows={2}
-          defaultValue={defaultValues.objectives ?? ''}
-          placeholder="¿Qué trabajamos hoy?"
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none"
-        />
-      </div>
+      <AutosavingTextarea
+        name="objectives"
+        label="Objetivos"
+        draftKey={`session:${draftKey}:objectives`}
+        defaultValue={defaultValues.objectives ?? ''}
+        placeholder="¿Qué trabajamos hoy?"
+      />
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Notas</label>
-        <textarea
-          name="notes"
-          rows={2}
-          defaultValue={defaultValues.notes ?? ''}
-          placeholder="Observaciones generales..."
-          className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-gray-300 resize-none"
-        />
-      </div>
+      <AutosavingTextarea
+        name="notes"
+        label="Notas"
+        draftKey={`session:${draftKey}:notes`}
+        defaultValue={defaultValues.notes ?? ''}
+        placeholder="Observaciones generales..."
+      />
 
       {players.length > 0 && (
         <div>

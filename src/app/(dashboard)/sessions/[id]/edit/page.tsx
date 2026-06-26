@@ -44,6 +44,7 @@ export default async function EditSessionPage({ params }: { params: Promise<{ id
             notes: session.notes,
           }}
           submitLabel="Guardar cambios"
+          draftKey={id}
         />
       </div>
     </main>
