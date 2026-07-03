@@ -33,9 +33,6 @@ export async function createPlan(formData: FormData) {
 
   if (error || !plan) throw new Error(error?.message ?? 'Error creating plan')
 
-  // Pre-create one plan_sessions slot per planned session, unassigned to a
-  // phase and not yet linked to a real session. The coach fills these in
-  // from the plan detail page.
   const slots = Array.from({ length: totalSessions }, (_, i) => ({
     plan_id: plan.id,
     session_number: i + 1,
@@ -90,7 +87,6 @@ export async function addPhase(planId: string, formData: FormData) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Verify plan ownership before inserting a phase under it.
   const { data: plan } = await supabase
     .from('training_plans')
     .select('id')
@@ -125,18 +121,12 @@ export async function deletePhase(phaseId: string, planId: string) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // Ownership enforced via the plan_phases RLS policy (joins to training_plans
-  // by coach_id), no extra check needed here.
   const { error } = await supabase.from('plan_phases').delete().eq('id', phaseId)
   if (error) throw new Error(error.message)
 
   revalidatePath(`/plans/${planId}`)
 }
 
-/**
- * Assigns a plan_sessions slot to a phase and/or a set of training blocks.
- * Used when the coach plans out what each upcoming session will cover.
- */
 export async function updatePlanSession(planSessionId: string, planId: string, formData: FormData) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -160,8 +150,7 @@ export async function updatePlanSession(planSessionId: string, planId: string, f
 }
 
 /**
- * Links a plan_sessions slot to a real session — called when the coach marks
- * that a planned session actually happened. Flips status to 'done'.
+ * Links a plan_sessions slot to a real session. Flips status to 'done'.
  */
 export async function linkSessionToPlan(planSessionId: string, planId: string, sessionId: string) {
   const supabase = await createClient()
@@ -171,6 +160,35 @@ export async function linkSessionToPlan(planSessionId: string, planId: string, s
   const { error } = await supabase
     .from('plan_sessions')
     .update({ session_id: sessionId, status: 'done' })
+    .eq('id', planSessionId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/plans/${planId}`)
+}
+
+/**
+ * FormData wrapper around linkSessionToPlan — used as a native form action
+ * via .bind(null, planSessionId, planId) from the plan detail page.
+ */
+export async function linkSessionToPlanForm(planSessionId: string, planId: string, formData: FormData) {
+  const sessionId = formData.get('session_id') as string
+  if (!sessionId) throw new Error('Seleccioná una sesión')
+  return linkSessionToPlan(planSessionId, planId, sessionId)
+}
+
+/**
+ * Removes the link between a plan slot and a real session.
+ * Resets session_id to null and status back to 'planned'.
+ */
+export async function unlinkSessionFromPlan(planSessionId: string, planId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) redirect('/login')
+
+  const { error } = await supabase
+    .from('plan_sessions')
+    .update({ session_id: null, status: 'planned' })
     .eq('id', planSessionId)
 
   if (error) throw new Error(error.message)

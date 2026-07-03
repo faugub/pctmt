@@ -1,7 +1,13 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
-import { addPhase, deletePhase, markPlanSessionSkipped } from '@/app/actions/plans'
+import {
+  addPhase,
+  deletePhase,
+  markPlanSessionSkipped,
+  linkSessionToPlanForm,
+  unlinkSessionFromPlan,
+} from '@/app/actions/plans'
 import { AddPhaseForm } from '@/components/ui/AddPhaseForm'
 import { DeletePlanButton } from '@/components/ui/DeletePlanButton'
 
@@ -10,6 +16,12 @@ const STATUS_LABEL: Record<string, string> = {
   completed: 'Completado',
   paused: 'En pausa',
   cancelled: 'Cancelado',
+}
+
+function formatShortDate(dateStr: string) {
+  return new Date(dateStr).toLocaleDateString('es-ES', {
+    day: '2-digit', month: 'short', year: '2-digit',
+  })
 }
 
 type Phase = {
@@ -26,8 +38,15 @@ type PlanSessionRow = {
   session_number: number
   phase_id: string | null
   session_id: string | null
+  sessions: { id: string; title: string; session_date: string } | null
   status: 'planned' | 'done' | 'skipped'
   notes: string | null
+}
+
+type SessionOption = {
+  id: string
+  title: string
+  session_date: string
 }
 
 export default async function PlanDetailPage({ params }: { params: Promise<{ id: string }> }) {
@@ -68,11 +87,19 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
     .eq('plan_id', id)
     .order('sort_order', { ascending: true }) as { data: Phase[] | null }
 
+  // Join sessions so we can show the real session title when linked.
   const { data: planSessions } = await supabase
     .from('plan_sessions')
-    .select('*')
+    .select('*, sessions(id, title, session_date)')
     .eq('plan_id', id)
     .order('session_number', { ascending: true }) as { data: PlanSessionRow[] | null }
+
+  // All coach sessions for the link picker (most recent first).
+  const { data: allSessions } = await supabase
+    .from('sessions')
+    .select('id, title, session_date')
+    .order('session_date', { ascending: false })
+    .limit(200) as { data: SessionOption[] | null }
 
   const phaseMap = new Map((phases ?? []).map((p) => [p.id, p]))
   const sessions = planSessions ?? []
@@ -161,45 +188,104 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         <ul className="space-y-1.5">
           {sessions.map((s) => {
             const phase = s.phase_id ? phaseMap.get(s.phase_id) : null
+            const linkAction    = linkSessionToPlanForm.bind(null, s.id, id)
+            const unlinkAction  = unlinkSessionFromPlan.bind(null, s.id, id)
+            const skipAction    = markPlanSessionSkipped.bind(null, s.id, id)
+
             return (
-              <li
-                key={s.id}
-                className="flex items-center justify-between px-4 py-3 bg-card border border-border rounded-xl shadow-sm"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="text-xs font-medium text-muted-foreground w-6">#{s.session_number}</span>
-                  {phase && (
-                    <span
-                      className="w-2 h-2 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: phase.color ?? '#9ca3af' }}
-                    />
-                  )}
-                  <div>
-                    {s.session_id ? (
-                      <Link href={`/sessions/${s.session_id}`} className="text-sm text-foreground hover:underline">
-                        {phase ? phase.title : 'Sesión vinculada'}
-                      </Link>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">{phase ? phase.title : 'Sin asignar'}</p>
+              <li key={s.id} className="px-4 py-3 bg-card border border-border rounded-xl shadow-sm">
+                <div className="flex items-start justify-between gap-2">
+
+                  {/* Left: number, phase dot, content */}
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    <span className="text-xs font-medium text-muted-foreground w-6 flex-shrink-0 pt-0.5">
+                      #{s.session_number}
+                    </span>
+                    {phase && (
+                      <span
+                        className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+                        style={{ backgroundColor: phase.color ?? '#9ca3af' }}
+                      />
                     )}
-                    {s.notes && <p className="text-xs text-muted-foreground">{s.notes}</p>}
+                    <div className="flex-1 min-w-0">
+                      {s.session_id && s.sessions ? (
+                        <>
+                          <Link
+                            href={`/sessions/${s.session_id}`}
+                            className="text-sm font-medium text-foreground hover:underline"
+                          >
+                            {s.sessions.title}
+                          </Link>
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            {formatShortDate(s.sessions.session_date)}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          {phase?.title ?? 'Sin fase asignada'}
+                        </p>
+                      )}
+                      {s.notes && (
+                        <p className="text-xs text-muted-foreground mt-0.5">{s.notes}</p>
+                      )}
+
+                      {/* Link picker — only for unlinked planned slots */}
+                      {s.status === 'planned' && (
+                        <form action={linkAction} className="flex gap-1.5 mt-2">
+                          <select
+                            name="session_id"
+                            required
+                            className="flex-1 text-xs border border-border rounded-lg px-2 py-1.5 bg-background text-foreground min-w-0"
+                          >
+                            <option value="">— sesión real —</option>
+                            {(allSessions ?? []).map((sess) => (
+                              <option key={sess.id} value={sess.id}>
+                                {sess.title} · {formatShortDate(sess.session_date)}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            type="submit"
+                            className="text-xs px-2.5 py-1.5 bg-primary text-primary-foreground rounded-lg hover:opacity-90 transition-opacity flex-shrink-0"
+                          >
+                            Vincular
+                          </button>
+                        </form>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {s.status === 'planned' && (
-                    <form action={markPlanSessionSkipped.bind(null, s.id, id)}>
-                      <button type="submit" className="text-xs text-muted-foreground hover:text-amber-600 transition-colors">
-                        Saltar
-                      </button>
-                    </form>
-                  )}
-                  <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                    s.status === 'done' ? 'bg-green-100 text-green-700'
-                    : s.status === 'skipped' ? 'bg-muted text-muted-foreground'
-                    : 'bg-blue-50 text-blue-600'
-                  }`}>
-                    {s.status === 'done' ? 'Hecha' : s.status === 'skipped' ? 'Saltada' : 'Planeada'}
-                  </span>
+
+                  {/* Right: badge + secondary actions */}
+                  <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
+                    <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      s.status === 'done'      ? 'bg-green-100 text-green-700'
+                      : s.status === 'skipped' ? 'bg-muted text-muted-foreground'
+                      : 'bg-blue-50 text-blue-600'
+                    }`}>
+                      {s.status === 'done' ? 'Hecha' : s.status === 'skipped' ? 'Saltada' : 'Planeada'}
+                    </span>
+                    {s.status === 'planned' && (
+                      <form action={skipAction}>
+                        <button
+                          type="submit"
+                          className="text-xs text-muted-foreground hover:text-amber-600 transition-colors"
+                        >
+                          Saltar
+                        </button>
+                      </form>
+                    )}
+                    {s.status === 'done' && s.session_id && (
+                      <form action={unlinkAction}>
+                        <button
+                          type="submit"
+                          className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
+                        >
+                          Desvincular
+                        </button>
+                      </form>
+                    )}
+                  </div>
+
                 </div>
               </li>
             )

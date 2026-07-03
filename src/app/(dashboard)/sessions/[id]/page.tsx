@@ -33,6 +33,14 @@ type RawSessionBlock = {
   training_blocks: { title: string; block_type: string; duration_min: number | null } | null
 }
 
+type PlanContext = {
+  id: string
+  session_number: number
+  status: string
+  training_plans: { id: string; title: string } | null
+  plan_phases: { id: string; title: string; color: string | null } | null
+}
+
 export default async function SessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
@@ -62,6 +70,13 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
     .from('training_blocks')
     .select('id, title, block_type, duration_min')
     .order('created_at', { ascending: false }) as { data: LibraryBlock[] | null }
+
+  // Check whether this session is linked to a plan slot.
+  const { data: planContext } = await supabase
+    .from('plan_sessions')
+    .select('id, session_number, status, training_plans(id, title), plan_phases(id, title, color)')
+    .eq('session_id', id)
+    .maybeSingle() as { data: PlanContext | null }
 
   const sessionBlocks: SessionBlockRow[] = (rawSessionBlocks ?? [])
     .filter((r) => r.training_blocks !== null)
@@ -112,6 +127,33 @@ export default async function SessionPage({ params }: { params: Promise<{ id: st
           </div>
         ))}
       </div>
+
+      {/* Plan context — only visible when the session is linked to a plan slot */}
+      {planContext?.training_plans && (
+        <div>
+          <h2 className="text-base font-semibold text-foreground mb-4">Plan</h2>
+          <Link
+            href={`/plans/${planContext.training_plans.id}`}
+            className="flex items-center justify-between px-5 py-4 bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+          >
+            <div>
+              <p className="text-sm font-medium text-foreground">{planContext.training_plans.title}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Sesión #{planContext.session_number}
+                {planContext.plan_phases ? ` · ${planContext.plan_phases.title}` : ''}
+              </p>
+            </div>
+            {planContext.plan_phases?.color ? (
+              <span
+                className="w-3 h-3 rounded-full flex-shrink-0"
+                style={{ backgroundColor: planContext.plan_phases.color }}
+              />
+            ) : (
+              <span className="text-muted-foreground text-sm">→</span>
+            )}
+          </Link>
+        </div>
+      )}
 
       {/* Blocks */}
       <div>
