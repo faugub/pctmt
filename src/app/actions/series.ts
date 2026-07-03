@@ -2,43 +2,11 @@
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-
-// How far ahead to generate concrete sessions when a series has no end date.
-// Re-running "generate" later extends the horizon without duplicating past sessions.
-const OPEN_ENDED_HORIZON_DAYS = 90
-
-function toDateOnly(d: Date): string {
-  return d.toISOString().split('T')[0]
-}
-
-/**
- * Given a series definition, returns the list of calendar dates (YYYY-MM-DD)
- * that fall on the series' recurrence_days, between starts_on and the
- * effective end (ends_on, or starts_on + OPEN_ENDED_HORIZON_DAYS if open-ended).
- */
-function computeOccurrenceDates(
-  startsOn: string,
-  endsOn: string | null,
-  recurrenceDays: number[]
-): string[] {
-  const start = new Date(startsOn + 'T00:00:00Z')
-  const end = endsOn
-    ? new Date(endsOn + 'T00:00:00Z')
-    : new Date(start.getTime() + OPEN_ENDED_HORIZON_DAYS * 24 * 60 * 60 * 1000)
-
-  const days = new Set(recurrenceDays)
-  const dates: string[] = []
-
-  const cursor = new Date(start)
-  while (cursor <= end) {
-    if (days.has(cursor.getUTCDay())) {
-      dates.push(toDateOnly(cursor))
-    }
-    cursor.setUTCDate(cursor.getUTCDate() + 1)
-  }
-
-  return dates
-}
+import {
+  computeOccurrenceDates,
+  capDateBefore,
+  toDateOnly,
+} from '@/lib/series-utils'
 
 export async function createSeries(formData: FormData) {
   const supabase = await createClient()
@@ -348,12 +316,9 @@ export async function deleteSeriesOccurrence(sessionId: string, scope: DeleteSco
 
   if (deleteError) throw new Error(deleteError.message)
 
-  const dayBefore = new Date(session.session_date + 'T00:00:00Z')
-  dayBefore.setUTCDate(dayBefore.getUTCDate() - 1)
-
   const { error: capError } = await supabase
     .from('session_series')
-    .update({ ends_on: toDateOnly(dayBefore) })
+    .update({ ends_on: capDateBefore(session.session_date) })
     .eq('id', session.series_id)
     .eq('coach_id', user.id)
 
@@ -361,3 +326,6 @@ export async function deleteSeriesOccurrence(sessionId: string, scope: DeleteSco
 
   redirect('/calendar')
 }
+
+// Re-export toDateOnly for any callers that may need it (e.g. tests).
+export { toDateOnly }
