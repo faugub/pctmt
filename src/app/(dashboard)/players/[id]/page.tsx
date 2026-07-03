@@ -148,6 +148,18 @@ export default async function PlayerPage({ params }: { params: Promise<{ id: str
         ))}
       </div>
 
+      {/* Trajectory link */}
+      <Link
+        href={`/players/${id}/trajectory`}
+        className="flex items-center justify-between px-5 py-4 bg-card border border-border rounded-2xl shadow-sm hover:shadow-md transition-shadow"
+      >
+        <div>
+          <p className="text-sm font-medium text-foreground">Trayectoria</p>
+          <p className="text-xs text-muted-foreground mt-0.5">Historial longitudinal · sesiones y conceptos trabajados</p>
+        </div>
+        <span className="text-muted-foreground">→</span>
+      </Link>
+
       {/* Progress chart */}
       {chartSnapshots.length >= 2 && (
         <div className="bg-card border border-border rounded-2xl shadow-sm px-6 py-5">
