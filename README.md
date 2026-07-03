@@ -1,93 +1,101 @@
 # pctmt
 
-> SaaS platform for padel coaches — calendar, sessions, training content, player development, and competition tracking
+> Plataforma SaaS para entrenadores de pádel — calendario, sesiones, contenido de entrenamiento, desarrollo de jugadores y seguimiento de competencias
 
-**Live:** https://pctmt-azure.vercel.app
+**Live:** https://pctmt-azure.vercel.app  
 **Repo:** https://github.com/faugub/pctmt
 
-## What is this?
+## ¿Qué es esto?
 
-**pctmt** is a web-based platform for padel coaches who want to digitize their work. It replaces notebooks, spreadsheets, and WhatsApp threads with a purpose-built tool: a recurring-class calendar, a reusable training block library, multi-session plans, a tactical whiteboard, player progress tracking, and a shareable player profile coaches can show mid-session on their phone.
+**pctmt** es una plataforma web para entrenadores de pádel que quieren digitalizar su trabajo. Reemplaza cuadernos, planillas y hilos de WhatsApp con una herramienta construida para el propósito: calendario de clases recurrentes, biblioteca de bloques de entrenamiento reutilizables, planes de trabajo multi-sesión, pizarra táctica, seguimiento longitudinal de jugadores, gestión de parejas/sociedades, y un perfil compartible del jugador que el entrenador puede mostrar en medio de la clase desde el teléfono.
 
-The product is built mobile/tablet-first — coaches use it courtside, often on a tablet, between or during classes.
+El producto está construido mobile/tablet-first — los entrenadores lo usan en la cancha, durante o entre clases.
 
 ---
 
-## Core modules
+## Módulos
 
-| Module | Description |
+| Módulo | Descripción |
 |---|---|
-| **Calendar** | Week and month views, recurring class series with scoped edit/delete (this occurrence / future / entire series) |
-| **Sessions** | Plan classes, attach training blocks as a live checklist, track attendance |
-| **Training blocks** | Reusable exercise library (warmup, technique, physical, tactical, match, cooldown), optionally linked to a strategy |
-| **Training plans** | Multi-session plans with phases, for a group (recurring series) or an individual player |
-| **Strategies** | Play library tagged by court zone, linkable to a tactical whiteboard |
-| **Tactical whiteboard** | Drag-and-drop court diagram — players, ball, and shot lines, autosaved |
-| **Players** | Full profiles with physical/performance snapshots over time and a progress chart |
-| **Shareable player profile** | Public read-only link a coach can send a player — progress chart, attendance, competition results, no login required |
-| **Competencias** | Tracks where a player competed externally and what they achieved (not a bracket organizer — the coach doesn't run the tournament) |
-| **Dashboard** | Coach utilization (hours coached per month), recent sessions, upcoming competitions |
-| **Theme** | Light/dark toggle in the topbar, persisted in `localStorage`, no flash on load |
-| **Language** | ES/EN switcher in the topbar, persisted in a cookie, applied to navigation/chrome and the settings page |
-| **Branding** | Each coach sets a brand name, logo URL, and primary color from `/settings` — shown in their own sidebar/topbar and on their players' public shared profiles |
+| **Calendario** | Vista semanal y mensual, series recurrentes con edición/borrado con alcance (esta ocurrencia / futuras / toda la serie) |
+| **Sesiones** | Planificar clases, adjuntar bloques de entrenamiento como checklist en vivo, registrar asistencia, ver contexto del plan |
+| **Bloques de entrenamiento** | Biblioteca reutilizable (calentamiento, técnica, físico, táctico, partido, enfriamiento), con enlace opcional a una estrategia |
+| **Planes de trabajo** | Planes multi-sesión con fases, para un grupo (serie recurrente) o jugador individual; enlace bidireccional con sesiones reales |
+| **Estrategias** | Biblioteca de jugadas con zonas de cancha, etiquetas de concepto táctico y de decisión, enlazable a pizarras |
+| **Pizarra táctica** | Diagrama de cancha drag-and-drop — jugadores, pelota, líneas de tiro, guardado automático |
+| **Jugadores** | Perfiles completos con snapshots físicos/rendimiento, gráfico de progreso, historial de sesiones |
+| **Trayectoria del jugador** | Timeline longitudinal por jugador — sesiones asistidas, conceptos trabajados, snapshots, % de asistencia |
+| **Sociedades (Pairs)** | Pareja como entidad de primera clase — historial de sesiones compartidas, conceptos top, notas por dupla |
+| **Perfil compartido** | Link público read-only que el entrenador comparte con el jugador — gráfico de progreso, asistencia, competencias; sin login requerido |
+| **Competencias** | Registra dónde compitió un jugador externamente y qué logró (no organizador de torneos — el entrenador solo hace seguimiento) |
+| **Dashboard** | Utilización del entrenador (horas/mes), sesiones recientes, próximas competencias |
+| **Tema** | Toggle claro/oscuro en el topbar, persistido en `localStorage`, sin flash al cargar |
+| **Idioma** | Selector ES/EN en el topbar, persistido en cookie, aplicado a navegación/chrome y settings |
+| **Branding** | Cada entrenador configura nombre, URL de logo y color primario en `/settings` — visible en su sidebar y en los perfiles públicos de sus jugadores |
 
 ---
 
-## Tech stack
+## Stack técnico
 
-| Layer | Technology |
+| Capa | Tecnología |
 |---|---|
 | Frontend | Next.js 16 (App Router) + TypeScript + React 19 |
-| Styling | Tailwind CSS v4 — semantic CSS-variable tokens (`bg-card`, `text-foreground`, etc.) driving light/dark mode via a `.dark` class on `<html>` |
+| Estilos | Tailwind CSS v4 — tokens semánticos CSS (`bg-card`, `text-foreground`, etc.) para modo claro/oscuro vía clase `.dark` en `<html>` |
 | Charts | Recharts |
-| Internationalization | Custom cookie-based dictionary (`src/lib/i18n/`) — no external i18n library |
-| Backend / DB | Supabase (PostgreSQL + Auth, RLS-enforced) |
-| Deployment | Vercel (auto-deploy on push to `main`) |
+| Internacionalización | Diccionario propio basado en cookies (`src/lib/i18n/`) — sin dependencia externa de i18n |
+| Backend / DB | Supabase (PostgreSQL + Auth, RLS enforced) |
+| Tests | Vitest — funciones puras de lógica de series recurrentes |
+| Deploy | Vercel (auto-deploy en push a `main`) |
 
-No payments integration yet — see [`docs/product.md`](./docs/product.md) for the roadmap.
+Sin integración de pagos por ahora — ver [`docs/product.md`](./docs/product.md) para el roadmap.
 
 ---
 
-## Project structure
+## Estructura del proyecto
 
 ```
 pctmt/
-├── docs/                     # Architecture, product, runbook, QA script — read these first
+├── docs/                     # Arquitectura, producto, runbook, QA — leer primero
 ├── src/
 │   ├── app/
-│   │   ├── (auth)/           # Login, register
-│   │   ├── (dashboard)/      # Main app — protected routes
-│   │   │   ├── layout.tsx    # Shared chrome: sidebar + topbar (theme/language/branding), wraps every page below
-│   │   │   ├── players/
+│   │   ├── (auth)/           # Login, registro
+│   │   ├── (dashboard)/      # App principal — rutas protegidas
+│   │   │   ├── layout.tsx    # Chrome compartido: sidebar + topbar (tema/idioma/branding)
+│   │   │   ├── players/      # Perfiles + snapshots + trayectoria
 │   │   │   ├── sessions/
 │   │   │   ├── calendar/
-│   │   │   ├── series/       # Recurring series create/edit
-│   │   │   ├── blocks/       # Training block library
+│   │   │   ├── series/       # Series recurrentes
+│   │   │   ├── blocks/       # Biblioteca de bloques
 │   │   │   ├── plans/
 │   │   │   ├── strategies/
-│   │   │   ├── boards/       # Tactical whiteboard
-│   │   │   ├── tournaments/  # "Competencias" — UI copy reframed, routes/table names unchanged
-│   │   │   └── settings/     # Branding (name/logo/color) — theme + language live in the topbar instead
-│   │   ├── share/player/[token]/  # Public profile, no auth — renders the coach's branding
-│   │   └── actions/          # Server Actions, one file per domain
+│   │   │   ├── boards/       # Pizarra táctica
+│   │   │   ├── pairs/        # Sociedades — pareja como entidad
+│   │   │   ├── tournaments/  # "Competencias" — UI reframed, rutas sin cambios
+│   │   │   └── settings/     # Branding (nombre/logo/color)
+│   │   ├── share/player/[token]/  # Perfil público, sin auth
+│   │   └── actions/          # Server Actions, un archivo por dominio
 │   ├── components/
-│   │   ├── ui/                # Forms, toggles, the whiteboard editor, etc.
-│   │   └── layout/             # Sidebar, TopBar, MobileNav — the (dashboard) chrome
+│   │   ├── ui/               # Formularios, toggles, pizarra, chips de taxonomía, etc.
+│   │   └── layout/           # Sidebar, TopBar, MobileNav
 │   └── lib/
-│       ├── supabase/          # Client/server Supabase helpers + middleware
-│       └── i18n/               # Dictionaries (es/en) + cookie-based locale reader
+│       ├── supabase/         # Helpers cliente/servidor + middleware
+│       ├── i18n/             # Diccionarios (es/en) + lector de locale por cookie
+│       ├── series-utils.ts   # Lógica pura de fechas para series recurrentes (testeable)
+│       ├── taxonomy.ts       # Etiquetas tácticas — fuente única de verdad
+│       └── __tests__/        # Tests Vitest
 ├── supabase/
-│   └── migrations/           # SQL, applied manually in order — see docs/runbook.md
+│   └── migrations/           # SQL, aplicadas manualmente en orden — ver docs/runbook.md
+├── vitest.config.ts
 └── public/
 ```
 
-See [`docs/architecture.md`](./docs/architecture.md) for the full schema and design decisions.
+Ver [`docs/architecture.md`](./docs/architecture.md) para el schema completo y decisiones de diseño.
 
 ---
 
-## Getting started (development)
+## Desarrollo local
 
-> Prerequisites: Node.js 20+, a Supabase project
+> Requisitos: Node.js 20+, proyecto Supabase
 
 ```bash
 git clone https://github.com/faugub/pctmt.git
@@ -95,30 +103,45 @@ cd pctmt
 npm install
 
 cp .env.example .env.local
-# Fill in NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY
+# Completar NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY
 
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Abrir [http://localhost:3000](http://localhost:3000).
 
-### Database
+```bash
+npm test        # correr tests unitarios (Vitest)
+```
 
-Migrations live in `supabase/migrations/` and are **not** applied automatically — run each one in order via the Supabase SQL editor or `npx supabase db push`. See [`docs/runbook.md`](./docs/runbook.md) for the current list and which ones are applied in production.
+### Base de datos
+
+Las migraciones viven en `supabase/migrations/` y **no se aplican automáticamente** — ejecutar cada una en orden desde el SQL editor de Supabase o con `npx supabase db push`. Ver [`docs/runbook.md`](./docs/runbook.md) para el listado actual y cuáles están aplicadas en producción.
 
 ---
 
-## Documentation
+## Estado actual: Chapter 2
 
-| Doc | Contents |
+Las Fases 1–6.5 están completas. Cada módulo principal de coaching existe y funciona. El trabajo activo es **Chapter 2 — The Coach Experience**: onboarding guiado, navegación mobile con bottom nav, dashboard rediseñado como "Hoy", mejoras a la pizarra táctica, PWA y reporte PDF por jugador.
+
+Stripe y Playtomic permanecen congelados hasta que el producto sea algo que los entrenadores genuinamente quieran usar.
+
+Ver [`docs/product.md`](./docs/product.md) para el roadmap completo.
+
+---
+
+## Documentación
+
+| Doc | Contenido |
 |---|---|
-| [`docs/product.md`](./docs/product.md) | Vision, target customer, roadmap by phase |
-| [`docs/architecture.md`](./docs/architecture.md) | Schema, RLS, component patterns, design decisions |
-| [`docs/runbook.md`](./docs/runbook.md) | Deploy info, env vars, project structure, known gaps |
-| [`docs/qa-runbook.md`](./docs/qa-runbook.md) | Manual end-to-end test script |
+| [`docs/product.md`](./docs/product.md) | Visión, cliente objetivo, roadmap por fase |
+| [`docs/architecture.md`](./docs/architecture.md) | Schema, RLS, patrones de componentes, decisiones de diseño |
+| [`docs/runbook.md`](./docs/runbook.md) | Deploy, env vars, estructura, gaps conocidos |
+| [`docs/qa-runbook.md`](./docs/qa-runbook.md) | Script de tests end-to-end manual |
+| [`docs/voz-del-entrenador.md`](./docs/voz-del-entrenador.md) | Principios de entrenamiento élite de pádel traducidos a decisiones de producto |
 
 ---
 
-## License
+## Licencia
 
-MIT — see [LICENSE](./LICENSE).
+MIT — ver [LICENSE](./LICENSE).
