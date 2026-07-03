@@ -20,29 +20,30 @@ export function Sidebar({ dict, onNavigate }: Props) {
       label: dict.nav.group_main,
       items: [
         { href: '/dashboard', label: dict.nav.dashboard, emoji: '🏠' },
-        { href: '/calendar', label: dict.nav.calendar, emoji: '📅' },
+        { href: '/calendar',  label: dict.nav.calendar,  emoji: '📅' },
       ],
     },
     {
       label: dict.nav.group_players,
       items: [
         { href: '/players', label: dict.nav.players, emoji: '🎾' },
+        { href: '/pairs',   label: dict.nav.pairs,   emoji: '🤝' },
       ],
     },
     {
       label: dict.nav.group_training,
       items: [
         { href: '/sessions', label: dict.nav.sessions, emoji: '📋' },
-        { href: '/series', label: dict.nav.series, emoji: '🔁' },
-        { href: '/blocks', label: dict.nav.blocks, emoji: '🏃' },
-        { href: '/plans', label: dict.nav.plans, emoji: '🗺️' },
+        { href: '/series',   label: dict.nav.series,   emoji: '🔁' },
+        { href: '/blocks',   label: dict.nav.blocks,   emoji: '🏃' },
+        { href: '/plans',    label: dict.nav.plans,    emoji: '🗺️' },
       ],
     },
     {
       label: dict.nav.group_strategy,
       items: [
         { href: '/strategies', label: dict.nav.strategies, emoji: '🧠' },
-        { href: '/boards', label: dict.nav.boards, emoji: '🖊️' },
+        { href: '/boards',     label: dict.nav.boards,     emoji: '🔊️' },
       ],
     },
     {

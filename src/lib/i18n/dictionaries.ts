@@ -10,6 +10,7 @@ export interface Dictionary {
     calendar: string
     group_players: string
     players: string
+    pairs: string
     group_training: string
     sessions: string
     series: string
@@ -52,6 +53,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       calendar: 'Calendario',
       group_players: 'Jugadores',
       players: 'Jugadores',
+      pairs: 'Sociedades',
       group_training: 'Entrenamiento',
       sessions: 'Sesiones',
       series: 'Series',
@@ -92,6 +94,7 @@ export const dictionaries: Record<Locale, Dictionary> = {
       calendar: 'Calendar',
       group_players: 'Players',
       players: 'Players',
+      pairs: 'Pairs',
       group_training: 'Training',
       sessions: 'Sessions',
       series: 'Series',
