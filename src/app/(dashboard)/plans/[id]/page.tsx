@@ -12,15 +12,12 @@ import { AddPhaseForm } from '@/components/ui/AddPhaseForm'
 import { DeletePlanButton } from '@/components/ui/DeletePlanButton'
 
 const STATUS_LABEL: Record<string, string> = {
-  active: 'Activo',
-  completed: 'Completado',
-  paused: 'En pausa',
-  cancelled: 'Cancelado',
+  active: 'Activo', completed: 'Completado', paused: 'En pausa', cancelled: 'Cancelado',
 }
 
 function formatShortDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('es-ES', {
-    day: '2-digit', month: 'short', year: '2-digit',
+  return new Date(dateStr + 'T12:00:00Z').toLocaleDateString('es-ES', {
+    day: '2-digit', month: 'short', year: '2-digit', timeZone: 'UTC',
   })
 }
 
@@ -63,53 +60,47 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
 
   if (error || !plan) notFound()
 
-  // Resolve the polymorphic target name.
+  // Resolve polymorphic target
   let targetLabel = ''
   if (plan.target_type === 'group') {
     const { data: series } = await supabase
-      .from('session_series')
-      .select('title')
-      .eq('id', plan.target_id)
-      .single()
+      .from('session_series').select('title').eq('id', plan.target_id).single()
     targetLabel = series?.title ?? 'Serie eliminada'
   } else {
     const { data: player } = await supabase
-      .from('players')
-      .select('full_name')
-      .eq('id', plan.target_id)
-      .single()
+      .from('players').select('full_name').eq('id', plan.target_id).single()
     targetLabel = player?.full_name ?? 'Jugador eliminado'
   }
 
-  const { data: phases } = await supabase
-    .from('plan_phases')
-    .select('*')
-    .eq('plan_id', id)
-    .order('sort_order', { ascending: true }) as { data: Phase[] | null }
+  const [{ data: phases }, { data: planSessions }, { data: allSessions }] = await Promise.all([
+    supabase
+      .from('plan_phases')
+      .select('*')
+      .eq('plan_id', id)
+      .order('sort_order', { ascending: true }) as Promise<{ data: Phase[] | null }>,
 
-  // Join sessions so we can show the real session title when linked.
-  const { data: planSessions } = await supabase
-    .from('plan_sessions')
-    .select('*, sessions(id, title, session_date)')
-    .eq('plan_id', id)
-    .order('session_number', { ascending: true }) as { data: PlanSessionRow[] | null }
+    supabase
+      .from('plan_sessions')
+      .select('*, sessions(id, title, session_date)')
+      .eq('plan_id', id)
+      .order('session_number', { ascending: true }) as Promise<{ data: PlanSessionRow[] | null }>,
 
-  // All coach sessions for the link picker (most recent first).
-  const { data: allSessions } = await supabase
-    .from('sessions')
-    .select('id, title, session_date')
-    .order('session_date', { ascending: false })
-    .limit(200) as { data: SessionOption[] | null }
+    supabase
+      .from('sessions')
+      .select('id, title, session_date')
+      .order('session_date', { ascending: false })
+      .limit(200) as Promise<{ data: SessionOption[] | null }>,
+  ])
 
-  const phaseMap = new Map((phases ?? []).map((p) => [p.id, p]))
-  const sessions = planSessions ?? []
-  const doneCount = sessions.filter((s) => s.status === 'done').length
+  const phaseMap     = new Map((phases ?? []).map(p => [p.id, p]))
+  const sessions     = planSessions ?? []
+  const doneCount    = sessions.filter(s => s.status === 'done').length
   const completionPct = sessions.length > 0 ? Math.round((doneCount / sessions.length) * 100) : 0
 
   const addPhaseAction = addPhase.bind(null, id)
 
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10 space-y-8">
+    <main className="max-w-2xl mx-auto px-6 py-8 space-y-8">
 
       <Link href="/plans" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
         ← Planes
@@ -135,14 +126,14 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         )}
       </div>
 
-      {/* Progress bar */}
+      {/* Progress */}
       <div className="bg-card border border-border rounded-2xl shadow-sm px-6 py-5">
         <div className="flex items-center justify-between mb-2">
           <p className="text-sm font-medium text-foreground">Progreso</p>
-          <p className="text-sm text-muted-foreground">{doneCount} de {sessions.length} sesiones</p>
+          <p className="text-sm text-muted-foreground">{doneCount} de {sessions.length} sesiones · {completionPct}%</p>
         </div>
         <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-          <div className="h-full bg-primary transition-all" style={{ width: `${completionPct}%` }} />
+          <div className="h-full bg-primary transition-all duration-500" style={{ width: `${completionPct}%` }} />
         </div>
       </div>
 
@@ -154,14 +145,12 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         </div>
         {phases && phases.length > 0 ? (
           <ul className="space-y-2">
-            {phases.map((phase) => (
+            {phases.map(phase => (
               <li key={phase.id} className="bg-card border border-border rounded-2xl shadow-sm px-5 py-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span
-                      className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                      style={{ backgroundColor: phase.color ?? '#9ca3af' }}
-                    />
+                    <span className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: phase.color ?? '#9ca3af' }} />
                     <p className="text-sm font-medium text-foreground">{phase.title}</p>
                     <span className="text-xs text-muted-foreground">· {phase.session_count} sesiones</span>
                   </div>
@@ -178,7 +167,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
             ))}
           </ul>
         ) : (
-          <p className="text-sm text-muted-foreground">Sin fases todavía. Puedes trabajar sesión por sesión directamente.</p>
+          <p className="text-sm text-muted-foreground">Sin fases. Podés trabajar sesión por sesión directamente.</p>
         )}
       </div>
 
@@ -186,26 +175,23 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
       <div>
         <h2 className="text-base font-semibold text-foreground mb-3">Sesiones del plan</h2>
         <ul className="space-y-1.5">
-          {sessions.map((s) => {
-            const phase = s.phase_id ? phaseMap.get(s.phase_id) : null
-            const linkAction    = linkSessionToPlanForm.bind(null, s.id, id)
-            const unlinkAction  = unlinkSessionFromPlan.bind(null, s.id, id)
-            const skipAction    = markPlanSessionSkipped.bind(null, s.id, id)
+          {sessions.map(s => {
+            const phase        = s.phase_id ? phaseMap.get(s.phase_id) : null
+            const linkAction   = linkSessionToPlanForm.bind(null, s.id, id)
+            const unlinkAction = unlinkSessionFromPlan.bind(null, s.id, id)
+            const skipAction   = markPlanSessionSkipped.bind(null, s.id, id)
 
             return (
               <li key={s.id} className="px-4 py-3 bg-card border border-border rounded-xl shadow-sm">
                 <div className="flex items-start justify-between gap-2">
 
-                  {/* Left: number, phase dot, content */}
                   <div className="flex items-start gap-3 flex-1 min-w-0">
                     <span className="text-xs font-medium text-muted-foreground w-6 flex-shrink-0 pt-0.5">
                       #{s.session_number}
                     </span>
                     {phase && (
-                      <span
-                        className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-                        style={{ backgroundColor: phase.color ?? '#9ca3af' }}
-                      />
+                      <span className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+                        style={{ backgroundColor: phase.color ?? '#9ca3af' }} />
                     )}
                     <div className="flex-1 min-w-0">
                       {s.session_id && s.sessions ? (
@@ -228,8 +214,6 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
                       {s.notes && (
                         <p className="text-xs text-muted-foreground mt-0.5">{s.notes}</p>
                       )}
-
-                      {/* Link picker — only for unlinked planned slots */}
                       {s.status === 'planned' && (
                         <form action={linkAction} className="flex gap-1.5 mt-2">
                           <select
@@ -238,7 +222,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
                             className="flex-1 text-xs border border-border rounded-lg px-2 py-1.5 bg-background text-foreground min-w-0"
                           >
                             <option value="">— sesión real —</option>
-                            {(allSessions ?? []).map((sess) => (
+                            {(allSessions ?? []).map(sess => (
                               <option key={sess.id} value={sess.id}>
                                 {sess.title} · {formatShortDate(sess.session_date)}
                               </option>
@@ -255,7 +239,6 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
                     </div>
                   </div>
 
-                  {/* Right: badge + secondary actions */}
                   <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                     <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${
                       s.status === 'done'      ? 'bg-green-100 text-green-700'
@@ -266,20 +249,14 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
                     </span>
                     {s.status === 'planned' && (
                       <form action={skipAction}>
-                        <button
-                          type="submit"
-                          className="text-xs text-muted-foreground hover:text-amber-600 transition-colors"
-                        >
+                        <button type="submit" className="text-xs text-muted-foreground hover:text-amber-600 transition-colors">
                           Saltar
                         </button>
                       </form>
                     )}
                     {s.status === 'done' && s.session_id && (
                       <form action={unlinkAction}>
-                        <button
-                          type="submit"
-                          className="text-xs text-muted-foreground hover:text-red-500 transition-colors"
-                        >
+                        <button type="submit" className="text-xs text-muted-foreground hover:text-red-500 transition-colors">
                           Desvincular
                         </button>
                       </form>
@@ -293,7 +270,7 @@ export default async function PlanDetailPage({ params }: { params: Promise<{ id:
         </ul>
       </div>
 
-      {/* Delete plan */}
+      {/* Delete */}
       <div className="pt-2">
         <DeletePlanButton id={id} title={plan.title} />
       </div>
