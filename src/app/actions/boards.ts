@@ -5,11 +5,14 @@ import { createClient } from '@/lib/supabase/server'
 
 export type BoardToken = {
   id: string
-  x: number       // percentage (0-100) of court width
-  y: number       // percentage (0-100) of court length
+  x: number       // percentage (0–100) of court width
+  y: number       // percentage (0–100) of court length
   team: 'own' | 'rival' | 'ball'
   label: string
 }
+
+export type LineStyle = 'arrow' | 'dashed-arrow' | 'line' | 'dashed' | 'curve'
+export type LineColor = 'white' | 'yellow' | 'cyan'
 
 export type BoardLine = {
   id: string
@@ -17,7 +20,9 @@ export type BoardLine = {
   y1: number
   x2: number
   y2: number
-  dashed: boolean
+  dashed: boolean    // kept for backward compat; superseded by style
+  style?: LineStyle  // new field — falls back to 'arrow' or 'dashed-arrow'
+  color?: LineColor  // new field — falls back to 'white'
 }
 
 export type BoardData = {
@@ -53,7 +58,7 @@ export async function createBoard(formData: FormData) {
 /**
  * Persists the full board state (tokens + lines). Called directly from the
  * client editor — not bound to a <form> — so the canvas can autosave a few
- * hundred ms after the coach stops dragging, without a page navigation.
+ * hundred ms after the coach stops drawing, without a page navigation.
  */
 export async function saveBoardData(id: string, boardData: BoardData) {
   const supabase = await createClient()

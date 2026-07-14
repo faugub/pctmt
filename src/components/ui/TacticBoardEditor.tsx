@@ -1,29 +1,56 @@
 'use client'
 
 import { useEffect, useRef, useState, useTransition } from 'react'
-import { saveBoardData, type BoardData, type BoardLine, type BoardToken } from '@/app/actions/boards'
+import {
+  saveBoardData,
+  type BoardData,
+  type BoardLine,
+  type BoardToken,
+  type LineStyle,
+  type LineColor,
+} from '@/app/actions/boards'
 
-// Court viewBox is a fixed 1:2 ratio (10m x 20m at 18px/m) so stored
-// percentages render identically on any screen size.
+// Court viewBox — 1:2 ratio (10m × 20m at 18 px/m). Coordinates stored as
+// percentages so the diagram renders identically on any screen size.
 const VIEW_W = 200
 const VIEW_H = 400
 const COURT_X = 10
 const COURT_Y = 20
 const COURT_W = 180
 const COURT_H = 360
-
-// FIP: the service line sits 3.05m from the back wall (= 6.95m from the
-// net). At 18px/m that's ~54.9px — kept as its own constant since it's
-// easy to misplace (it looks similar in magnitude to "3m from net", which
-// is wrong: the deep zone is between the net and the service line, not
-// between the service line and the wall).
+// FIP: service line sits 3.05 m from the back wall (≈ 54.9 px at 18 px/m).
 const SERVICE_LINE_DEPTH = 54.9
 
 const TEAM_COLOR: Record<BoardToken['team'], string> = {
-  own: '#2563eb',
+  own:   '#2563eb',
   rival: '#dc2626',
-  ball: '#eab308',
+  ball:  '#eab308',
 }
+
+const COLOR_HEX: Record<LineColor, string> = {
+  white:  '#ffffff',
+  yellow: '#fbbf24',
+  cyan:   '#67e8f9',
+}
+
+type Tool = 'move' | LineStyle
+
+const TOOLS: { id: Tool; symbol: string; label: string }[] = [
+  { id: 'move',         symbol: '↖', label: 'Mover'   },
+  { id: 'arrow',        symbol: '→', label: 'Flecha'  },
+  { id: 'dashed-arrow', symbol: '⇢', label: 'Movim.'  },
+  { id: 'line',         symbol: '—', label: 'Línea'   },
+  { id: 'dashed',       symbol: '╌', label: 'Punt.'   },
+  { id: 'curve',        symbol: '⌒', label: 'Curva'   },
+]
+
+const LINE_COLORS: { id: LineColor; label: string }[] = [
+  { id: 'white',  label: 'Blanco'   },
+  { id: 'yellow', label: 'Amarillo' },
+  { id: 'cyan',   label: 'Cyan'     },
+]
+
+// ── helpers ──────────────────────────────────────────────────────────────────
 
 function clamp(n: number, min: number, max: number) {
   return Math.min(max, Math.max(min, n))
@@ -49,6 +76,29 @@ function newId() {
     : `id-${Date.now()}-${Math.random().toString(16).slice(2)}`
 }
 
+/** Backward compat: old lines stored only dashed:boolean */
+function effectiveStyle(line: BoardLine): LineStyle {
+  if (line.style) return line.style
+  return line.dashed ? 'dashed-arrow' : 'arrow'
+}
+
+function effectiveColor(line: BoardLine): LineColor {
+  return line.color ?? 'white'
+}
+
+/**
+ * Quadratic bezier control point — offset perpendicular to the segment
+ * by 30% of its length. Produces a gentle, consistent arc.
+ */
+function curveControl(x1: number, y1: number, x2: number, y2: number) {
+  return {
+    cx: (x1 + x2) / 2 - (y2 - y1) * 0.3,
+    cy: (y1 + y2) / 2 + (x2 - x1) * 0.3,
+  }
+}
+
+// ── component ────────────────────────────────────────────────────────────────
+
 export function TacticBoardEditor({
   boardId,
   initialData,
@@ -56,85 +106,78 @@ export function TacticBoardEditor({
   boardId: string
   initialData: BoardData
 }) {
-  const [tokens, setTokens] = useState<BoardToken[]>(initialData.tokens ?? [])
-  const [lines, setLines] = useState<BoardLine[]>(initialData.lines ?? [])
-  const [selected, setSelected] = useState<{ type: 'token' | 'line'; id: string } | null>(null)
-  const [lineMode, setLineMode] = useState(false)
+  const [tokens,      setTokens]      = useState<BoardToken[]>(initialData.tokens ?? [])
+  const [lines,       setLines]       = useState<BoardLine[]>(initialData.lines   ?? [])
+  const [selected,    setSelected]    = useState<{ type: 'token' | 'line'; id: string } | null>(null)
+  const [activeTool,  setActiveTool]  = useState<Tool>('move')
+  const [lineColor,   setLineColor]   = useState<LineColor>('white')
   const [drawingLine, setDrawingLine] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null)
   const [dragTokenId, setDragTokenId] = useState<string | null>(null)
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle')
+  const [saveStatus,  setSaveStatus]  = useState<'idle' | 'saving' | 'saved'>('idle')
 
-  const svgRef = useRef<SVGSVGElement>(null)
-  const hasMountedRef = useRef(false)
+  const svgRef         = useRef<SVGSVGElement>(null)
+  const hasMountedRef  = useRef(false)
   const [, startTransition] = useTransition()
 
-  // Autosave: any change to tokens/lines schedules a save ~700ms later.
-  // Skips the very first render, since that state is exactly what's
-  // already in the database.
+  const isDrawingMode = activeTool !== 'move'
+
+  // ── autosave ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!hasMountedRef.current) {
-      hasMountedRef.current = true
-      return
-    }
+    if (!hasMountedRef.current) { hasMountedRef.current = true; return }
     setSaveStatus('saving')
-    const timeout = setTimeout(() => {
+    const t = setTimeout(() => {
       startTransition(async () => {
         const result = await saveBoardData(boardId, { tokens, lines })
         setSaveStatus(result.ok ? 'saved' : 'idle')
       })
     }, 700)
-    return () => clearTimeout(timeout)
+    return () => clearTimeout(t)
   }, [tokens, lines, boardId])
 
+  // ── pointer helpers ───────────────────────────────────────────────────────
   function getPoint(e: { clientX: number; clientY: number }) {
-    const svg = svgRef.current
+    const svg  = svgRef.current
     if (!svg) return { x: 0, y: 0 }
     const rect = svg.getBoundingClientRect()
     return {
-      x: ((e.clientX - rect.left) / rect.width) * VIEW_W,
-      y: ((e.clientY - rect.top) / rect.height) * VIEW_H,
+      x: ((e.clientX - rect.left)  / rect.width)  * VIEW_W,
+      y: ((e.clientY - rect.top)   / rect.height) * VIEW_H,
     }
   }
 
+  // ── token actions ─────────────────────────────────────────────────────────
   function addToken(team: BoardToken['team']) {
-    const sameTeam = tokens.filter((t) => t.team === team)
-    const label = team === 'ball' ? '●' : String(sameTeam.length + 1)
+    const same   = tokens.filter(t => t.team === team)
+    const label  = team === 'ball' ? '●' : String(same.length + 1)
     const defaultY = team === 'rival' ? 22 : team === 'ball' ? 50 : 78
-    const jitter = sameTeam.length * 8
     const token: BoardToken = {
       id: newId(),
-      x: clamp(35 + jitter, 10, 90),
+      x: clamp(35 + same.length * 8, 10, 90),
       y: defaultY,
       team,
       label,
     }
-    setTokens((prev) => [...prev, token])
+    setTokens(prev => [...prev, token])
     setSelected({ type: 'token', id: token.id })
   }
 
+  // ── shared actions ────────────────────────────────────────────────────────
   function deleteSelected() {
     if (!selected) return
-    if (selected.type === 'token') {
-      setTokens((prev) => prev.filter((t) => t.id !== selected.id))
-    } else {
-      setLines((prev) => prev.filter((l) => l.id !== selected.id))
-    }
+    if (selected.type === 'token') setTokens(prev => prev.filter(t => t.id !== selected.id))
+    else                           setLines(prev  => prev.filter(l => l.id !== selected.id))
     setSelected(null)
   }
 
   function clearAll() {
     if (tokens.length === 0 && lines.length === 0) return
     if (!confirm('¿Borrar todo el contenido de esta pizarra?')) return
-    setTokens([])
-    setLines([])
-    setSelected(null)
+    setTokens([]); setLines([]); setSelected(null)
   }
 
+  // ── canvas events ─────────────────────────────────────────────────────────
   function handleSvgPointerDown(e: React.PointerEvent<SVGSVGElement>) {
-    if (!lineMode) {
-      setSelected(null)
-      return
-    }
+    if (!isDrawingMode) { setSelected(null); return }
     const { x, y } = getPoint(e)
     svgRef.current?.setPointerCapture(e.pointerId)
     setDrawingLine({ x1: x, y1: y, x2: x, y2: y })
@@ -142,99 +185,160 @@ export function TacticBoardEditor({
 
   function handleSvgPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     const { x, y } = getPoint(e)
-
     if (dragTokenId) {
       const pct = courtToPercent(x, y)
-      setTokens((prev) =>
-        prev.map((t) => (t.id === dragTokenId ? { ...t, x: pct.x, y: pct.y } : t))
-      )
+      setTokens(prev => prev.map(t => t.id === dragTokenId ? { ...t, x: pct.x, y: pct.y } : t))
       return
     }
-
-    if (drawingLine) {
-      setDrawingLine((prev) => (prev ? { ...prev, x2: x, y2: y } : null))
-    }
+    if (drawingLine) setDrawingLine(prev => prev ? { ...prev, x2: x, y2: y } : null)
   }
 
   function handleSvgPointerUp() {
-    if (dragTokenId) {
-      setDragTokenId(null)
-    }
+    if (dragTokenId) { setDragTokenId(null); return }
     if (drawingLine) {
       const { x1, y1, x2, y2 } = drawingLine
-      const dist = Math.hypot(x2 - x1, y2 - y1)
-      if (dist > 6) {
+      if (Math.hypot(x2 - x1, y2 - y1) > 6) {
         const p1 = courtToPercent(x1, y1)
         const p2 = courtToPercent(x2, y2)
-        const line: BoardLine = { id: newId(), x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, dashed: false }
-        setLines((prev) => [...prev, line])
+        const line: BoardLine = {
+          id: newId(),
+          x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
+          dashed: false,                  // compat field
+          style:  activeTool as LineStyle,
+          color:  lineColor,
+        }
+        setLines(prev => [...prev, line])
         setSelected({ type: 'line', id: line.id })
       }
       setDrawingLine(null)
     }
   }
 
-  const previewLine = drawingLine
+  // ── line renderer ─────────────────────────────────────────────────────────
+  function renderSavedLine(line: BoardLine) {
+    const style      = effectiveStyle(line)
+    const color      = effectiveColor(line)
+    const isSelected = selected?.type === 'line' && selected.id === line.id
+    const stroke     = isSelected ? '#fbbf24' : COLOR_HEX[color]
+    const strokeW    = isSelected ? 3 : 2.25
+    const markerId   = isSelected ? 'arrowhead-selected' : `arrowhead-${color}`
+    const hasArrow   = style === 'arrow' || style === 'dashed-arrow' || style === 'curve'
+    const dashed     = style === 'dashed-arrow' || style === 'dashed'
+    const p1         = percentToCourt(line.x1, line.y1)
+    const p2         = percentToCourt(line.x2, line.y2)
 
+    const onTap = (e: React.PointerEvent) => {
+      e.stopPropagation()
+      setSelected({ type: 'line', id: line.id })
+    }
+
+    if (style === 'curve') {
+      const { cx, cy } = curveControl(p1.px, p1.py, p2.px, p2.py)
+      const d = `M ${p1.px},${p1.py} Q ${cx},${cy} ${p2.px},${p2.py}`
+      return (
+        <g key={line.id} onPointerDown={onTap}>
+          <path d={d} stroke="transparent" strokeWidth={16} fill="none" />
+          <path d={d} stroke={stroke} strokeWidth={strokeW} fill="none"
+            markerEnd={hasArrow ? `url(#${markerId})` : undefined} />
+        </g>
+      )
+    }
+
+    return (
+      <g key={line.id} onPointerDown={onTap}>
+        <line x1={p1.px} y1={p1.py} x2={p2.px} y2={p2.py}
+          stroke="transparent" strokeWidth={16} />
+        <line x1={p1.px} y1={p1.py} x2={p2.px} y2={p2.py}
+          stroke={stroke} strokeWidth={strokeW}
+          strokeDasharray={dashed ? '6 4' : undefined}
+          markerEnd={hasArrow ? `url(#${markerId})` : undefined}
+        />
+      </g>
+    )
+  }
+
+  // ── render ────────────────────────────────────────────────────────────────
   return (
     <div className="space-y-3">
-      {/* Toolbar */}
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          onClick={() => addToken('own')}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition-colors"
-        >
+
+      {/* Row 1: Tokens */}
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => addToken('own')}
+          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-blue-50 text-blue-700 border border-blue-100 hover:bg-blue-100 transition-colors">
           + Mi jugador
         </button>
-        <button
-          onClick={() => addToken('rival')}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 transition-colors"
-        >
+        <button onClick={() => addToken('rival')}
+          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-50 text-red-700 border border-red-100 hover:bg-red-100 transition-colors">
           + Rival
         </button>
-        <button
-          onClick={() => addToken('ball')}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 transition-colors"
-        >
+        <button onClick={() => addToken('ball')}
+          className="px-3 py-1.5 text-sm font-medium rounded-lg bg-amber-50 text-amber-700 border border-amber-100 hover:bg-amber-100 transition-colors">
           + Pelota
         </button>
+      </div>
 
-        <span className="w-px h-6 bg-gray-200 mx-1" />
+      {/* Row 2: Drawing tools */}
+      <div className="flex gap-1.5 overflow-x-auto pb-0.5">
+        {TOOLS.map(tool => (
+          <button
+            key={tool.id}
+            onClick={() => setActiveTool(tool.id)}
+            title={tool.label}
+            className={`flex flex-col items-center px-2.5 py-1.5 rounded-lg text-xs font-medium border transition-colors flex-shrink-0 ${
+              activeTool === tool.id
+                ? 'bg-foreground text-background border-foreground'
+                : 'bg-card text-foreground border-border hover:border-foreground/40'
+            }`}
+          >
+            <span className="text-base leading-none">{tool.symbol}</span>
+            <span className="mt-0.5 text-[9px] opacity-70">{tool.label}</span>
+          </button>
+        ))}
+      </div>
 
-        <button
-          onClick={() => { setLineMode((v) => !v); setSelected(null) }}
-          className={`px-3 py-1.5 text-sm font-medium rounded-lg border transition-colors ${
-            lineMode
-              ? 'bg-gray-900 text-white border-gray-900'
-              : 'bg-white text-gray-700 border-gray-200 hover:border-gray-400'
-          }`}
-        >
-          ✏️ Modo línea {lineMode ? '(activo)' : ''}
-        </button>
-
+      {/* Row 3: Color picker (line tools) + actions */}
+      <div className="flex items-center gap-2 flex-wrap">
+        {isDrawingMode && (
+          <>
+            <span className="text-xs text-muted-foreground">Color:</span>
+            {LINE_COLORS.map(c => (
+              <button
+                key={c.id}
+                onClick={() => setLineColor(c.id)}
+                title={c.label}
+                className={`w-5 h-5 rounded-full border-2 transition-all ${
+                  lineColor === c.id ? 'scale-125 border-foreground' : 'border-border'
+                }`}
+                style={{ backgroundColor: COLOR_HEX[c.id] }}
+              />
+            ))}
+            <span className="w-px h-4 bg-border mx-1" />
+          </>
+        )}
         <button
           onClick={deleteSelected}
           disabled={!selected}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-700 hover:border-gray-400 transition-colors disabled:opacity-40 disabled:hover:border-gray-200"
+          className="px-2.5 py-1 text-xs font-medium rounded-lg border border-border text-foreground hover:border-red-400 hover:text-red-600 transition-colors disabled:opacity-40"
         >
-          Eliminar seleccionado
+          × Eliminar
         </button>
-
         <button
           onClick={clearAll}
-          className="px-3 py-1.5 text-sm font-medium rounded-lg border border-gray-200 text-gray-500 hover:border-red-200 hover:text-red-600 transition-colors"
+          className="px-2.5 py-1 text-xs font-medium rounded-lg border border-border text-muted-foreground hover:border-red-300 hover:text-red-500 transition-colors"
         >
-          Limpiar todo
+          🧹 Limpiar
         </button>
-
-        <span className="ml-auto text-xs text-gray-400">
+        <span className="ml-auto text-xs text-muted-foreground">
           {saveStatus === 'saving' && 'Guardando…'}
-          {saveStatus === 'saved' && 'Guardado ✓'}
+          {saveStatus === 'saved'  && '✓ Guardado'}
         </span>
       </div>
 
-      <p className="text-xs text-gray-400">
-        Arrastra las fichas para moverlas. Con &quot;Modo línea&quot; activo, desliza sobre la cancha para dibujar una jugada.
+      {/* Hint */}
+      <p className="text-xs text-muted-foreground">
+        {isDrawingMode
+          ? 'Deslizá sobre la cancha para dibujar.'
+          : 'Arrastrá las fichas · tocá una línea para seleccionarla.'}
       </p>
 
       {/* Court */}
@@ -249,105 +353,74 @@ export function TacticBoardEditor({
           onPointerCancel={handleSvgPointerUp}
         >
           <defs>
-            <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-              <path d="M0,0 L8,4 L0,8 Z" fill="white" />
-            </marker>
-            <marker id="arrowheadSelected" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+            {(['white', 'yellow', 'cyan'] as LineColor[]).map(c => (
+              <marker key={c} id={`arrowhead-${c}`}
+                markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
+                <path d="M0,0 L8,4 L0,8 Z" fill={COLOR_HEX[c]} />
+              </marker>
+            ))}
+            <marker id="arrowhead-selected"
+              markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
               <path d="M0,0 L8,4 L0,8 Z" fill="#fbbf24" />
             </marker>
           </defs>
 
-          {/* Outer background */}
+          {/* Background */}
           <rect x={0} y={0} width={VIEW_W} height={VIEW_H} fill="#0f4c5c" />
-
-          {/* Court surface */}
           <rect x={COURT_X} y={COURT_Y} width={COURT_W} height={COURT_H} fill="#1a7a8c" />
-
-          {/* Glass walls (visual cue only) */}
-          <rect
-            x={COURT_X}
-            y={COURT_Y}
-            width={COURT_W}
-            height={COURT_H}
-            fill="none"
-            stroke="#bff3ff"
-            strokeOpacity={0.5}
-            strokeWidth={3}
-          />
+          <rect x={COURT_X} y={COURT_Y} width={COURT_W} height={COURT_H}
+            fill="none" stroke="#bff3ff" strokeOpacity={0.5} strokeWidth={3} />
 
           {/* Net */}
-          <line
-            x1={COURT_X} y1={COURT_Y + COURT_H / 2}
+          <line x1={COURT_X} y1={COURT_Y + COURT_H / 2}
             x2={COURT_X + COURT_W} y2={COURT_Y + COURT_H / 2}
-            stroke="#0f172a" strokeWidth={3}
-          />
+            stroke="#0f172a" strokeWidth={3} />
 
-          {/* Service lines — FIP regulation: 3.05m from the back wall
-              (equivalently 6.95m from the net). The service box is the
-              deep zone close to the net; only a thin strip is left
-              between the service line and the back wall. */}
-          <line
-            x1={COURT_X} y1={COURT_Y + SERVICE_LINE_DEPTH}
+          {/* Service lines */}
+          <line x1={COURT_X} y1={COURT_Y + SERVICE_LINE_DEPTH}
             x2={COURT_X + COURT_W} y2={COURT_Y + SERVICE_LINE_DEPTH}
-            stroke="white" strokeOpacity={0.6} strokeWidth={1.5}
-          />
-          <line
-            x1={COURT_X} y1={COURT_Y + COURT_H - SERVICE_LINE_DEPTH}
+            stroke="white" strokeOpacity={0.6} strokeWidth={1.5} />
+          <line x1={COURT_X} y1={COURT_Y + COURT_H - SERVICE_LINE_DEPTH}
             x2={COURT_X + COURT_W} y2={COURT_Y + COURT_H - SERVICE_LINE_DEPTH}
-            stroke="white" strokeOpacity={0.6} strokeWidth={1.5}
-          />
-
-          {/* Center service line — spans from one service line, through
-              the net, to the other service line. */}
-          <line
-            x1={COURT_X + COURT_W / 2} y1={COURT_Y + SERVICE_LINE_DEPTH}
+            stroke="white" strokeOpacity={0.6} strokeWidth={1.5} />
+          <line x1={COURT_X + COURT_W / 2} y1={COURT_Y + SERVICE_LINE_DEPTH}
             x2={COURT_X + COURT_W / 2} y2={COURT_Y + COURT_H - SERVICE_LINE_DEPTH}
-            stroke="white" strokeOpacity={0.6} strokeWidth={1.5}
-          />
+            stroke="white" strokeOpacity={0.6} strokeWidth={1.5} />
 
-          {/* Half labels */}
+          {/* Labels */}
           <text x={COURT_X + 6} y={COURT_Y + 16} fill="white" fillOpacity={0.5} fontSize={9}>Rival</text>
           <text x={COURT_X + 6} y={COURT_Y + COURT_H - 8} fill="white" fillOpacity={0.5} fontSize={9}>Tu equipo</text>
 
           {/* Saved lines */}
-          {lines.map((line) => {
-            const p1 = percentToCourt(line.x1, line.y1)
-            const p2 = percentToCourt(line.x2, line.y2)
-            const isSelected = selected?.type === 'line' && selected.id === line.id
-            return (
-              <g
-                key={line.id}
-                onPointerDown={(e) => {
-                  e.stopPropagation()
-                  setSelected({ type: 'line', id: line.id })
-                }}
-              >
-                <line x1={p1.px} y1={p1.py} x2={p2.px} y2={p2.py} stroke="transparent" strokeWidth={16} />
-                <line
-                  x1={p1.px} y1={p1.py} x2={p2.px} y2={p2.py}
-                  stroke={isSelected ? '#fbbf24' : 'white'}
-                  strokeWidth={isSelected ? 3 : 2.25}
-                  strokeDasharray={line.dashed ? '6 4' : undefined}
-                  markerEnd={isSelected ? 'url(#arrowheadSelected)' : 'url(#arrowhead)'}
-                />
-              </g>
-            )
-          })}
+          {lines.map(line => renderSavedLine(line))}
 
-          {/* Live preview while drawing a line */}
-          {previewLine && (
-            <line
-              x1={previewLine.x1} y1={previewLine.y1}
-              x2={previewLine.x2} y2={previewLine.y2}
-              stroke="#fbbf24" strokeWidth={2.25} strokeDasharray="4 4"
-            />
-          )}
+          {/* Live preview */}
+          {drawingLine && (() => {
+            if (activeTool === 'curve') {
+              const { cx, cy } = curveControl(
+                drawingLine.x1, drawingLine.y1, drawingLine.x2, drawingLine.y2,
+              )
+              return (
+                <path
+                  d={`M ${drawingLine.x1},${drawingLine.y1} Q ${cx},${cy} ${drawingLine.x2},${drawingLine.y2}`}
+                  stroke="#fbbf24" strokeWidth={2.25} strokeDasharray="4 4" fill="none"
+                />
+              )
+            }
+            return (
+              <line
+                x1={drawingLine.x1} y1={drawingLine.y1}
+                x2={drawingLine.x2} y2={drawingLine.y2}
+                stroke="#fbbf24" strokeWidth={2.25} strokeDasharray="4 4"
+              />
+            )
+          })()}
 
           {/* Tokens */}
-          {tokens.map((token) => {
-            const { px, py } = percentToCourt(token.x, token.y)
-            const isSelected = selected?.type === 'token' && selected.id === token.id
-            const radius = token.team === 'ball' ? 6 : 10
+          {tokens.map(token => {
+            const { px, py }   = percentToCourt(token.x, token.y)
+            const isSelected   = selected?.type === 'token' && selected.id === token.id
+            const radius       = token.team === 'ball' ? 6 : 10
             return (
               <g
                 key={token.id}
@@ -355,24 +428,18 @@ export function TacticBoardEditor({
                   e.stopPropagation()
                   svgRef.current?.setPointerCapture(e.pointerId)
                   setSelected({ type: 'token', id: token.id })
-                  setDragTokenId(token.id)
+                  if (!isDrawingMode) setDragTokenId(token.id)
                 }}
-                style={{ cursor: 'grab' }}
+                style={{ cursor: isDrawingMode ? 'crosshair' : 'grab' }}
               >
-                <circle
-                  cx={px} cy={py} r={radius}
+                <circle cx={px} cy={py} r={radius}
                   fill={TEAM_COLOR[token.team]}
                   stroke={isSelected ? '#fbbf24' : 'white'}
                   strokeWidth={isSelected ? 3 : 1.5}
                 />
                 {token.team !== 'ball' && (
-                  <text
-                    x={px} y={py + 3.5}
-                    textAnchor="middle"
-                    fontSize={9}
-                    fontWeight={600}
-                    fill="white"
-                  >
+                  <text x={px} y={py + 3.5} textAnchor="middle"
+                    fontSize={9} fontWeight={600} fill="white">
                     {token.label}
                   </text>
                 )}
