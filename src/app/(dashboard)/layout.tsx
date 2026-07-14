@@ -5,6 +5,7 @@ import { getLocale } from '@/lib/i18n/getLocale'
 import { dictionaries } from '@/lib/i18n/dictionaries'
 import { Sidebar } from '@/components/layout/Sidebar'
 import { TopBar } from '@/components/layout/TopBar'
+import { BottomNav } from '@/components/layout/BottomNav'
 import { ToastListener } from '@/components/ui/ToastListener'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -52,7 +53,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
         <Suspense fallback={null}>
           <ToastListener />
         </Suspense>
-        <main className="flex-1">{children}</main>
+        {/* pb-20 clears the fixed bottom nav on mobile; md:pb-0 removes it on desktop */}
+        <main className="flex-1 pb-20 md:pb-0">{children}</main>
+        <BottomNav />
       </div>
     </div>
   )
